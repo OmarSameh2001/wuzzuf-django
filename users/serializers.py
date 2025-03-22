@@ -8,15 +8,22 @@ from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 class UserSerializer(serializers.ModelSerializer):
+    #allow user to upload cv
+    cv = serializers.FileField(required=False) 
     #serializer for user object
     class Meta:
         model = get_user_model()
-        fields = ['email', 'username', 'password', 'name']
+        fields = ['email', 'username', 'password', 'name','cv']
         extra_kwargs = {'password': {'write_only': True, 'min_length': 5}}
     
     def create(self, validated_data):
         #create and return user with encrypted pass
-        return get_user_model().objects.create_user(**validated_data)
+        cv_file = validated_data.pop('cv', None)
+        user=get_user_model().objects.create_user(**validated_data)
+        if cv_file:
+            user.cv = cv_file
+            user.save()
+        return user
     
     def update(self, instance, validated_data):
         #update and return user

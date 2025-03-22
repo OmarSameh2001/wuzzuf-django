@@ -8,12 +8,15 @@ from .serializers import (
     AuthTokenSerializer,
     UserProfileSerializer
     )
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # Create your views here.
 #views for user api
 class CreateUserView(generics.CreateAPIView):
     #create new user in system
     serializer_class = UserSerializer
+    #3l4an allow file upload
+    parser_classes = (MultiPartParser, FormParser)
 
 class CreateTokenView(ObtainAuthToken):
     #create new authtoken for user
