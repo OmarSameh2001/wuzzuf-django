@@ -1,9 +1,9 @@
 from rest_framework.serializers import ModelSerializer
-from .models import Jobs
+from .models import Job
 
 class JobsSerializer(ModelSerializer):
     class Meta:
-        model = Jobs
+        model = Job
         fields = '__all__'
     extra_kwargs = {
         'title': {'required': True},

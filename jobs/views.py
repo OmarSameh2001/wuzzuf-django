@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .models import Jobs
+from .models import Job
 from rest_framework import viewsets
 from .serializers import JobsSerializer
 from rest_framework.response import Response

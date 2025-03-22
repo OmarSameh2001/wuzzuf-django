@@ -1,5 +1,5 @@
-from .models import Application
-from .serializers import ApplicationSerializer
+from .models import Answer
+from .serializers import AnswerSerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from django.utils.decorators import method_decorator
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class ApplicationViewSet(viewsets.ModelViewSet):
-    queryset = Application.objects.all()
-    serializer_class = ApplicationSerializer
+class AnswerViewSet(viewsets.ModelViewSet):
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
 
