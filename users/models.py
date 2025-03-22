@@ -8,6 +8,8 @@ from django.contrib.auth.models import (
 )
 import re
 import datetime
+from cloudinary.models import CloudinaryField
+
 
 class UserManager(BaseUserManager):
 
@@ -90,7 +92,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     dob = models.DateField(null=True, blank=True)
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
-    cv = models.TextField(null=True, blank=True)
+    cv = CloudinaryField('cv', null=True, blank=True) 
     img = models.TextField(null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)  
     keywords = models.TextField(null=True, blank=True) 
