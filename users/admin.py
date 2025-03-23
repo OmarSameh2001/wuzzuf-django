@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from . import models  
 from django.utils.translation import gettext_lazy as _
+from companys.models import Company  # Import the Company model
 
 
 class UserAdmin(BaseUserAdmin):
@@ -49,6 +50,12 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ("email", "name", "is_active", "is_company")  # Customize displayed columns
+    search_fields = ("email", "name")  # Add search functionality
+    list_filter = ("is_active", "is_company")  # Add filters
+
 
 # Register your models here.
 admin.site.register(models.User, UserAdmin)
+admin.site.register(Company, CompanyAdmin)
