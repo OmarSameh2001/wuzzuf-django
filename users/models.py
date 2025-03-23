@@ -93,7 +93,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
     cv = CloudinaryField('cv', null=True, blank=True) 
-    img = models.TextField(null=True, blank=True)
+    profile_image  = CloudinaryField('image', null=True, blank=True) 
     location = models.CharField(max_length=255, null=True, blank=True)  
     keywords = models.TextField(null=True, blank=True) 
     national_id = models.CharField(max_length=14, unique=True, null=True, blank=True,  validators=[validate_egyptian_national_id])

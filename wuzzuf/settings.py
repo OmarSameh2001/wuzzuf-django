@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'users',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
@@ -154,8 +153,10 @@ REST_FRAMEWORK = {
     ),
 }
 
-CORS_ALLOWED_ORIGINS = True
-
+# CORS_ALLOWED_ORIGINS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://.*$",  # Allows all HTTP and HTTPS origins
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CLOUDINARY_STORAGE = {
