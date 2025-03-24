@@ -1,8 +1,10 @@
 from django.db import models
 from applications.models import Application
 from questions.models import Question
+
 # Create your models here.
 class Answer(models.Model):
+    id = models.AutoField(primary_key=True)
     application = models.ForeignKey(Application, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     answer_text = models.TextField()
