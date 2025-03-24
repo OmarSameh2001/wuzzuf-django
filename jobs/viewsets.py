@@ -11,3 +11,4 @@ from django.utils.decorators import method_decorator
 class JobsViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobsSerializer
+    filter_fields = ('status','title', 'location', 'experince', 'type_of_job', 'keywords')

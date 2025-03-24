@@ -12,5 +12,6 @@ from jobs.models import Job
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all()
     serializer_class = ApplicationSerializer
+    filter_fields = ('user', 'job')
 
 
