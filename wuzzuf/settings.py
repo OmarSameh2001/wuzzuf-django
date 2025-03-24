@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
-# import cloudinary
-# import cloudinary.uploader
-# import cloudinary.api
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import os
+from dotenv import load_dotenv
+# from cloudinary.storage import CloudinaryStorage
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,8 +43,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'users',
-    'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
     'drf_spectacular',
@@ -51,6 +52,11 @@ INSTALLED_APPS = [
     'questions',
     'applications',
     'answers',
+    #da third party app
+    'cloudinary_storage',
+    'cloudinary',
+    "django_extensions",
+    
 ]
 
 MIDDLEWARE = [
@@ -144,6 +150,7 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': 'af5RS-cWKp_3sZqoeSNosenA6Jk', 
 }   
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage',
+
 AUTH_USER_MODEL = 'users.User'
 
 REST_FRAMEWORK = {
@@ -155,3 +162,6 @@ REST_FRAMEWORK = {
 
 
 CORS_ALLOW_ALL_ORIGINS = True 
+load_dotenv()
+
+CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')

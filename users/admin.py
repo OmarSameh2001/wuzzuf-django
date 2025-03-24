@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from . import models  
 from django.utils.translation import gettext_lazy as _
-
+from django.utils.html import format_html 
 
 class UserAdmin(BaseUserAdmin):
     #define admin pages for users
@@ -48,7 +48,6 @@ class UserAdmin(BaseUserAdmin):
             )
         }),
     )
-
 
 # Register your models here.
 admin.site.register(models.User, UserAdmin)

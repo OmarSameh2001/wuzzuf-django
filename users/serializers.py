@@ -6,7 +6,7 @@ from django.contrib.auth import (
 )
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-
+from users.models import User
 class UserSerializer(serializers.ModelSerializer):
     #serializer for user object
     class Meta:
@@ -31,6 +31,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    cv = serializers.FileField(required=False)
+    img = serializers.ImageField(required=False)
     class Meta:
         model = get_user_model()
         fields = [
