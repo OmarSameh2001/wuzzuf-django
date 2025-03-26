@@ -4,9 +4,9 @@ from rest_framework.routers import DefaultRouter
 from .views import get_job_recommendations
 
 router = DefaultRouter()
-router.register('', JobsViewSet, basename='jobs')  # Ensure correct prefix
+router.register("", JobsViewSet, basename="jobs")  # Ensure correct prefix
 
 urlpatterns = [
-    path('', include(router.urls)),  # REST API routes
+    path("", include(router.urls)),  # REST API routes
     path("recom/<int:user_id>/", get_job_recommendations, name="job-recommendations"),
 ]
