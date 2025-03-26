@@ -1,9 +1,10 @@
 from django.db import models
 from jobs.models import Job
+from user.models import Jobseeker
 # Create your models here.
 class Application(models.Model):
     id = models.AutoField(primary_key=True)
-    # user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(Jobseeker, on_delete=models.CASCADE)
     job = models.ForeignKey(Job, on_delete=models.CASCADE)
     status = models.CharField(max_length=50, default='1')
     ats_res = models.TextField(blank=True, null=True)
