@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'jobs',
-    'users',
+    'user',
     'questions',
     'applications',
     'answers',
