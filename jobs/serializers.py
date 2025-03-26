@@ -5,6 +5,7 @@ class JobsSerializer(ModelSerializer):
     class Meta:
         model = Job
         fields = '__all__'
+
     extra_kwargs = {
         'title': {'required': True},
         'description': {'required': True},
@@ -12,8 +13,8 @@ class JobsSerializer(ModelSerializer):
         'experince': {'required': True},
         'status': {'required': True},
         'type_of_job': {'required': True},
-    }   
-    
+    }
+
     
     
         

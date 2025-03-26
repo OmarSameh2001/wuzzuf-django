@@ -20,45 +20,7 @@ from rest_framework.permissions import IsAuthenticated
 import requests
 from django.http import JsonResponse
 from django.contrib.auth import get_user_model
-
-
-# FASTAPI_ATS_URL = "http://127.0.0.1:8000/ats/"
-# User = get_user_model()
-# class ProcessCVATSView(APIView):
-#     """Handles fetching CV from user profile and sending it to ATS FastAPI"""
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request, *args, **kwargs):
-#         job_id = request.data.get("job_id")
-        
-#         if not job_id:
-#             return Response({"error": "Job ID is required"}, status=400)
-
-#         # Get the user's CV from profile
-#         user = request.user  # Since API is authenticated, get logged-in user
-#         cv_url = getattr(user, "cv", None)  # Assuming 'cv' field stores Cloudinary URL
-
-#         if not cv_url:
-#             return Response({"error": "No CV found for this user"}, status=404)
-
-#         # Download CV from Cloudinary
-#         response = requests.get(cv_url)
-#         if response.status_code != 200:
-#             return Response({"error": "Failed to download CV"}, status=500)
-
-#         # Send the CV file to FastAPI ATS system
-#         files = {"cv_file": ("cv.pdf", response.content, "application/pdf")}
-#         data = {"job_id": job_id}
-
-#         ats_response = requests.post(FASTAPI_ATS_URL, files=files, data=data)
-
-#         if ats_response.status_code == 200:
-#             return Response(ats_response.json())
-#         else:
-#             return Response({"error": "ATS processing failed"}, status=500)
-
-
-
+from .serializers import UserSerializer
 
 
 
@@ -87,11 +49,16 @@ class ManageUserView(generics.RetrieveUpdateAPIView):
 class UpdateUserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     authentication_classes = [authentication.TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
+    
+    permission_classes = [IsAuthenticated]
     #ll file upload
     parser_classes = [MultiPartParser, FormParser]
-    def get_object(self):
-        return self.request.user
+    def get_object(self, request):
+        serializer = UserProfileSerializer(request.user)
+        print (serializer.data)
+        print (request.user)
+        return Response(serializer.data)
     def patch(self, request, *args, **kwargs):
         user = self.get_object()
         data = request.data.copy()

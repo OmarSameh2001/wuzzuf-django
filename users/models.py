@@ -94,7 +94,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     cv = CloudinaryField('cv', resource_type='raw', null=True, blank=True)
     img = CloudinaryField('image', null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)  
-    keywords = models.TextField(null=True, blank=True) 
+    # keywords = models.TextField(null=True, blank=True) 
     national_id = models.CharField(max_length=14, unique=True, null=True, blank=True,  validators=[validate_egyptian_national_id])
     national_id_img = models.TextField(null=True, blank=True)
     phone_number = models.CharField(max_length=11, null=True, blank=True, validators=[RegexValidator(

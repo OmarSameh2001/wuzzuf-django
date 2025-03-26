@@ -37,9 +37,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = get_user_model()
         fields = [
             'email', 'username', 'name', 'dob', 'education', 'experience', 
-            'cv', 'img', 'location', 'keywords', 'national_id', 'national_id_img', 
+            'cv', 'img', 'location',  'national_id', 'national_id_img', 
             'phone_number', 'is_company'
         ]
+        #'keywords',
         read_only_fields = ['email', 'username']
 
 class AuthTokenSerializer(serializers.Serializer):
