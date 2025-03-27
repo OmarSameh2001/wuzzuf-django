@@ -5,11 +5,11 @@ from .views import get_recommendationsView
 from .views import ats_match
 
 router = DefaultRouter()
-router.register('', JobsViewSet, basename='jobs')  # Ensure correct prefix
+router.register('', JobsViewSet, basename='jobs') 
 
 urlpatterns = [
-    path('', include(router.urls)),  # REST API routes
+    path('', include(router.urls)),  
     path("recom/<int:user_id>/", get_recommendationsView, name="job-recommendations"),
-    path("ats_match//<int:user_id>/", ats_match, name="ats-match"),
+    path("ats/<int:user_id>/<int:job_id>", ats_match, name="ats-match"),
 
 ]
