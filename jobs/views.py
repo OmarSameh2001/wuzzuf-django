@@ -45,77 +45,50 @@ def get_recommendationsView(request , user_id ,):
         print(response)
         return JsonResponse({"error": "Failed to fetch recommendations"}, status=response.status_code)
 # Create your views here.
+
 def ats_match(request, user_id, job_id):
-    print("user_id",user_id)
-    print("job_id",job_id)
+    print("user_id", user_id)
+    print("job_id", job_id)
     try:
-        # Fetch user
         user = User.objects.get(id=user_id)
-        print("user",user)
+        print("user", user)
     except User.DoesNotExist:
         return JsonResponse({"error": "User not found"}, status=404)
 
     try:
-        # Fetch job
         job = Job.objects.get(id=job_id)
-        print("job",job)
+        print("job", job)
     except Job.DoesNotExist:
         return JsonResponse({"error": "Job not found"}, status=404)
 
-    # Ensure the user has a CV uploaded
     if not user.cv:
-        return JsonResponse({"error": "User CV not found"}, status=400)
+            # 3ayza  haga ttla3 f el front msg en el cv not found => ta2reban kda    
+           return JsonResponse({"error": "User CV not found", "message": "Please upload a CV before applying."}, status=400)
 
     fastapi_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
+    print("fastapi_url", fastapi_url)
+
     cv_url = str(user.cv) if user.cv else None
-    print("cv_url",cv_url)
+    print("cv_url", cv_url)
+   
     payload = {
         "cv_url": cv_url,
-        "job_title": job.title,
-        "job_description": job.description
+        "job_id": job.id,
+        # "job_title": job.title,
+        # "job_description": job.description
     }
-    print("payload",payload)
-    # Send request to FastAPI
-    response = requests.post(fastapi_url, json=payload)
-    print("response",response)
-    if response.status_code == 200:
+    print("payload", payload)
+
+    try:
+        response = requests.post(fastapi_url, json=payload, timeout=30)
+
+        print("response", response)
         response_data = response.json()
-        print(response_data)
-        response_data.update({
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "cv_url": cv_url
-            },
-            "job": {
-                "id": job.id,
-                "title": job.title,
-                "description": job.description
-            }
-        })
+        print("response_data", response_data)
+        if not isinstance(response_data, dict):
+            return JsonResponse({"error": "Unexpected response format from FastAPI"}, status=500)
+
         return JsonResponse(response_data, status=200)
-    else:
-        return JsonResponse({"error": "FastAPI error", "details": response.json()}, status=response.status_code)
-    # if response.status_code == 200:
-    #     response_data = response.json()
-        
-    #     # Return structured response
-    #     return JsonResponse({
-    #         "match_percentage": response_data.get("match_percentage"),
-    #         "message": response_data.get("message"),
-    #         "user": {
-    #             "id": user.id,
-    #             "username": user.username,
-    #             "cv_url": user.cv
-    #         },
-    #         "job": {
-    #             "id": job.id,
-    #             "title": job.title,
-    #             "description": job.description
-    #         }
-    #     }, status=200)
-    # else:
-    #     return JsonResponse({
-    #         "error": "FastAPI error",
-    #         "details": response.json()
-    #     }, status=response.status_code)
+
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({"error": "FastAPI request failed", "details": str(e)}, status=500)
