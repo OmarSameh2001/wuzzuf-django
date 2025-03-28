@@ -42,7 +42,32 @@ def validate_egyptian_national_id(value):
 
     return value
 
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("The Email field must be set")
+        
+        email = self.normalize_email(email)
+        user_type = extra_fields.pop("user_type", User.UserType.ADMIN)
+
+        if user_type == User.UserType.COMPANY:
+            user = Company(email=email, user_type=user_type, **extra_fields)
+        elif user_type == User.UserType.JOBSEEKER:
+            user = Jobseeker(email=email, user_type=user_type, **extra_fields)
+        else:
+            user = User(email=email, user_type=user_type, **extra_fields)
+
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        return self.create_user(email, password, **extra_fields)
+
 class User(AbstractUser):
+    objects = UserManager()
     class UserType(models.TextChoices):
         ADMIN = "ADMIN", "Admin"
         JOBSEEKER = "JOBSEEKER", "Jobseeker"
@@ -122,11 +147,15 @@ class Company(User):
     class Meta:
         verbose_name = "Company"
         verbose_name_plural = "Companies"
+        proxy = False
 
     def save(self, *args, **kwargs):
         if not self.pk:
             self.user_type = User.UserType.COMPANY
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
 
 
 @receiver(post_save, sender=User)

@@ -12,7 +12,7 @@ class Job(models.Model):
     status = models.CharField(max_length=100)
     type_of_job = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True )
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey('user.Company', on_delete=models.CASCADE, related_name='jobs')
 
     def __str__(self):
         return self.title

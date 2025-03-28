@@ -2,21 +2,21 @@ from rest_framework import serializers
 from .models import Job
 from questions.serializers import QuestionSerializer
 from questions.models import Question
+from user.serializers import CompanyProfileSerializer
 
 class JobsSerializer(serializers.ModelSerializer):
     questions = serializers.SerializerMethodField()  # Allow handling multiple questions
+    company_name = serializers.ReadOnlyField(source='company.name')
+    company_logo = serializers.ReadOnlyField(source='company.img')
 
     class Meta:
         model = Job
-        fields = ['id', 'title', 'description', 'experince', 'type_of_job', 'location', 'keywords', 'status', 'questions', 'created_at']
+        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job', 'location', 'keywords', 'status', 'questions', 'created_at']
 
     def get_questions(self, obj):
-        # Retrieve questions only if it's a single object detail request
-        request = self.context.get('request')
-        if request and request.parser_context.get('kwargs', {}).get('pk'):  
-            questions = Question.objects.filter(job=obj)
-            return QuestionSerializer(questions, many=True).data
-        return []  # Return empty list for list views
+        return QuestionSerializer(Question.objects.filter(job=obj), many=True).data
+
+
 
     def create(self, validated_data):
         questions_data = validated_data.pop('questions', [])  # Extract questions
@@ -39,4 +39,3 @@ class JobsSerializer(serializers.ModelSerializer):
             Question.objects.create(job=instance, **question_data)
 
         return instance
-        
