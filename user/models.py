@@ -40,18 +40,17 @@ def validate_egyptian_national_id(value):
     if governorate_code < 1 or governorate_code > 35:
         raise ValidationError("Invalid governorate code in National ID.")
 
-    return value
 
 class User(AbstractUser):
     class UserType(models.TextChoices):
-        ADMIN = "ADMIN", "Admin"
         JOBSEEKER = "JOBSEEKER", "Jobseeker"
         COMPANY = "COMPANY", "Company"
 
+    #shared fields
     user_type = models.CharField(
         max_length=20,
         choices=UserType.choices,
-        default=UserType.ADMIN
+        default=UserType.JOBSEEKER
     )
 
     email = models.EmailField(
@@ -85,14 +84,7 @@ class User(AbstractUser):
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username", "name"]
-
-    def __str__(self):
-        return self.email
-
-
-class Jobseeker(User):
+    #jobseeker fields
     dob = models.DateField(null=True, blank=True)
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
@@ -101,14 +93,32 @@ class Jobseeker(User):
     national_id = models.CharField(
         max_length=14,
         unique=True,
+        null=True,
+        blank=True,
         validators=[validate_egyptian_national_id],
     )
     national_id_img = models.TextField(null=True, blank=True)
     skills = models.TextField(null=True, blank=True)
 
+    #company fields
+    est = models.DateField(null=True, blank=True)
+    industry = models.CharField(max_length=100, null=True, blank=True)
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["username", "name"]
+
+    def __str__(self):
+        return self.email
+
+
+class Jobseeker(User):
     class Meta:
         verbose_name = "Jobseeker"
         verbose_name_plural = "Jobseekers"
+        permissions = [
+            ("view_jobseeker_dashboard", "Can view jobseeker dashboard"),
+            ("edit_jobseeker_profile", "Can edit jobseeker profile"),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.pk:
@@ -116,41 +126,42 @@ class Jobseeker(User):
         super().save(*args, **kwargs)
 
 class Company(User):
-    est = models.DateField(null=True, blank=True)
-    industry = models.CharField(max_length=100, null=True, blank=True)
-
     class Meta:
         verbose_name = "Company"
         verbose_name_plural = "Companies"
+        permissions = [
+            ("view_company_dashboard", "Can view company dashboard"),
+            ("edit_company_profile", "Can edit company profile"),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.pk:
             self.user_type = User.UserType.COMPANY
         super().save(*args, **kwargs)
 
+class JobseekerProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.JOBSEEKER})
+    jobseeker_id = models.IntegerField(null=True, blank=True)
+
+class CompanyProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.COMPANY})
+    company_id = models.IntegerField(null=True, blank=True)
 
 @receiver(post_save, sender=User)
 def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
+    if created and instance.is_active:
         Token.objects.create(user=instance)
 
-# @receiver(post_save, sender=Jobseeker)
-# def create_jobseeker_profile(sender, instance, created, **kwargs):
-#     if created:
-#         JobseekerProfile.objects.create(user=instance)
+@receiver(post_save, sender=Jobseeker)
+def create_jobseeker_profile(sender, instance, created, **kwargs):
+    if created:
+        JobseekerProfile.objects.create(user=instance)
 
-# class JobseekerProfile(models.Model):
-#     user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.JOBSEEKER})
-#     jobseeker_id = models.IntegerField(null=True, blank=True)
 
-# @receiver(post_save, sender=Company)
-# def create_company_profile(sender, instance, created, **kwargs):
-#     if created:
-#         CompanyProfile.objects.create(user=instance)
-
-# class CompanyProfile(models.Model):
-#     user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.COMPANY})
-#     company_id = models.IntegerField(null=True, blank=True)
+@receiver(post_save, sender=Company)
+def create_company_profile(sender, instance, created, **kwargs):
+    if created:
+        CompanyProfile.objects.create(user=instance)
 
 
 class CustomAuthToken(ObtainAuthToken):
@@ -165,20 +176,20 @@ class CustomAuthToken(ObtainAuthToken):
         })
 
 
-# class JobseekerDashboard(APIView):
-#     authentication_classes = [TokenAuthentication]
-#     permission_classes = [IsAuthenticated]
+class JobseekerDashboard(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-#     def get(self, request):
-#         if request.user.user_type == "JOBSEEKER":
-#             return Response({"message": "Welcome, Jobseeker!"})
-#         return Response({"error": "Unauthorized"}, status=403)
+    def get(self, request):
+        if request.user.user_type == "JOBSEEKER":
+            return Response({"message": "Welcome, Jobseeker!"})
+        return Response({"error": "Unauthorized"}, status=403)
 
-# class CompanyDashboard(APIView):
-#     authentication_classes = [TokenAuthentication]
-#     permission_classes = [IsAuthenticated]
+class CompanyDashboard(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-#     def get(self, request):
-#         if request.user.user_type == "COMPANY":
-#             return Response({"message": "Welcome, Company!"})
-#         return Response({"error": "Unauthorized"}, status=403)
+    def get(self, request):
+        if request.user.user_type == "COMPANY":
+            return Response({"message": "Welcome, Company!"})
+        return Response({"error": "Unauthorized"}, status=403)

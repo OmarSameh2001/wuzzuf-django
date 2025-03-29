@@ -71,10 +71,12 @@ class JobseekerAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        (_("Profile"), {"fields": ("education", "experience", "cv", "keywords")} ),
-        (_("National ID Details"), {"fields": ("national_id", "national_id_img")} ),
+        ("Profile", {"fields": ("education", "experience", "cv", "keywords")}),
+        ("National ID Details", {"fields": ("national_id", "national_id_img")}),
     )
     readonly_fields = ["last_login"]
+
+
 
 
 class CompanyAdmin(admin.ModelAdmin):
@@ -84,9 +86,10 @@ class CompanyAdmin(admin.ModelAdmin):
             None,
             {"fields": ("email", "username", "password", "name", "phone_number")},
         ),
-        (_("Company Details"), {"fields": ("est", "industry")} ),
+        ("Company Details", {"fields": ("est", "industry")}),
     )
     readonly_fields = ["last_login"]
+
 
 
 admin.site.register(User, CustomUserAdmin)

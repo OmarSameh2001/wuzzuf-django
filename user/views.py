@@ -5,6 +5,8 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from .serializers import UserSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
+from .models import Company, Jobseeker
+
 
 
 
@@ -26,15 +28,28 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
 
 class JobseekerViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
+    # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
+    queryset = Jobseeker.objects.all()
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_object(self):
+        return self.request.user
+
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
 class CompanyViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(user_type=User.UserType.COMPANY)
+    # queryset = User.objects.filter(user_type=User.UserType.COMPANY)
+    queryset = Company.objects.all()
     serializer_class = CompanyProfileSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
 
 class CustomAuthToken(ObtainAuthToken):
