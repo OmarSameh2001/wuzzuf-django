@@ -9,7 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'username', 'password', 'name', 'user_type']
-        
+
         extra_kwargs = {'password': {'write_only': True, 'min_length': 5}}
     
     def create(self, validated_data):
@@ -43,7 +43,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'phone_number',
             'skills'
             ]
-        read_only_fields = ['email', 'national_id']
+        read_only_fields = ['email']
 
         def update(self, instance, validated_data):
             # Update the fields for the jobseeker model

@@ -59,7 +59,7 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
 
-
+@admin.register(Jobseeker)
 class JobseekerAdmin(admin.ModelAdmin):
     list_display = ["email", "name", "dob", "education", "experience", "cv"]
     fieldsets = (
@@ -78,7 +78,7 @@ class JobseekerAdmin(admin.ModelAdmin):
 
 
 
-
+@admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
     list_display = ["email", "name", "est", "industry"]
     fieldsets = (
@@ -93,5 +93,3 @@ class CompanyAdmin(admin.ModelAdmin):
 
 
 admin.site.register(User, CustomUserAdmin)
-admin.site.register(Jobseeker, JobseekerAdmin)
-admin.site.register(Company, CompanyAdmin)

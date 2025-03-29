@@ -111,33 +111,30 @@ class User(AbstractUser):
         return self.email
 
 
+class JobseekerManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(user_type=User.UserType.JOBSEEKER)
+
+class CompanyManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(user_type=User.UserType.COMPANY)
+
 class Jobseeker(User):
+    objects = JobseekerManager()
+
     class Meta:
+        proxy = True
         verbose_name = "Jobseeker"
         verbose_name_plural = "Jobseekers"
-        permissions = [
-            ("view_jobseeker_dashboard", "Can view jobseeker dashboard"),
-            ("edit_jobseeker_profile", "Can edit jobseeker profile"),
-        ]
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            self.user_type = User.UserType.JOBSEEKER
-        super().save(*args, **kwargs)
 
 class Company(User):
+    objects = CompanyManager()
+
     class Meta:
+        proxy = True
         verbose_name = "Company"
         verbose_name_plural = "Companies"
-        permissions = [
-            ("view_company_dashboard", "Can view company dashboard"),
-            ("edit_company_profile", "Can edit company profile"),
-        ]
 
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            self.user_type = User.UserType.COMPANY
-        super().save(*args, **kwargs)
 
 class JobseekerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.JOBSEEKER})
