@@ -1,5 +1,4 @@
 from django.shortcuts import render
-from .models import Job
 from rest_framework import viewsets
 from .serializers import JobsSerializer
 from rest_framework.response import Response
@@ -8,7 +7,7 @@ from django.http import JsonResponse
 import requests
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
-from .models import Job
+from .models import Job ,JobseekerProfile
 User = get_user_model()
 
 FASTAPI_URL = "http://127.0.0.1:8001"

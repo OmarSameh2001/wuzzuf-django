@@ -26,6 +26,7 @@ class CustomUserAdmin(UserAdmin):
                     "phone_number",
                     "location",
                     "img",
+                    
                 )
             },
         ),
@@ -61,7 +62,9 @@ class CustomUserAdmin(UserAdmin):
 
 
 class JobseekerAdmin(admin.ModelAdmin):
-    list_display = ["email", "name", "dob", "education", "experience", "cv"]
+    list_display = ["email", "name", "dob", "education", "experience", "cv","img"]
+    ordering = ["id"]
+    list_filter = ["user_type"]
     fieldsets = (
         (
             None,
@@ -71,7 +74,7 @@ class JobseekerAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        (_("Profile"), {"fields": ("education", "experience", "cv", "keywords")} ),
+        (_("Profile"), {"fields": ("education", "experience", "cv")} ),#"keywords"
         (_("National ID Details"), {"fields": ("national_id", "national_id_img")} ),
     )
     readonly_fields = ["last_login"]

@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.views import APIView
 import datetime
-
+from cloudinary.models import CloudinaryField
 # Custom Validator for Egyptian National ID
 def validate_egyptian_national_id(value):
     if not value.isdigit() or len(value) != 14:
@@ -92,7 +92,8 @@ class User(AbstractUser):
             )
         ],
     )
-    img = models.TextField(null=True, blank=True)
+    img = CloudinaryField('image', null=True, blank=True)
+    # img = models.TextField(null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(
         max_length=11,
@@ -121,14 +122,15 @@ class Jobseeker(User):
     dob = models.DateField(null=True, blank=True)
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
-    cv = models.TextField(null=True, blank=True)
-    keywords = models.TextField(null=True, blank=True)
+    cv = CloudinaryField('cv', resource_type='raw', null=True, blank=True)
+    # img = CloudinaryField('image', null=True, blank=True)
+    # keywords = models.TextField(null=True, blank=True)
     national_id = models.CharField(
         max_length=14,
         unique=True,
         validators=[validate_egyptian_national_id],
     )
-    national_id_img = models.TextField(null=True, blank=True)
+    national_id_img = CloudinaryField('image', null=True, blank=True)
     skills = models.TextField(null=True, blank=True)
 
     class Meta:

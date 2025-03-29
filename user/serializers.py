@@ -24,9 +24,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class JobseekerProfileSerializer(serializers.ModelSerializer):
+    cv = serializers.FileField(required=False)
+    national_id_img = serializers.ImageField(required=False)
+    # img = serializers.ImageField(required=False) shofy de feen kda !!!!!!!!!!!
     class Meta:
         model = Jobseeker
-        fields = ['email', 'password', 'name', 'dob', 'education', 'experience', 'phone_number', 'cv', 'keywords', 'national_id', 'national_id_img', 'skills']
+        fields = ['email', 'password', 'name', 'dob', 'education', 'experience', 'phone_number', 'cv', 'national_id', 'national_id_img', 'skills'] #, 'keywords'
         read_only_fields = ['national_id']
 
 

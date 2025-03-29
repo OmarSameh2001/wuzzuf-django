@@ -5,8 +5,9 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from .serializers import UserSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-
-
+from cloudinary.uploader import upload
+from cloudinary.uploader import upload_resource
+from rest_framework.parsers import MultiPartParser, FormParser
 
 User = get_user_model()
 
