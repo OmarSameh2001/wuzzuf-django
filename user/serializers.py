@@ -13,7 +13,9 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True, 'min_length': 5}}
     
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        user_type = validated_data.pop("user_type", "jobseeker")  # Default to jobseeker
+        user = User.objects.create_user(**validated_data, user_type=user_type)
+        return user
     
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
