@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import os
+from dotenv import load_dotenv
+# from cloudinary.storage import CloudinaryStorage
 
 # import cloudinary
 # import cloudinary.uploader
@@ -51,6 +57,11 @@ INSTALLED_APPS = [
     'questions',
     'applications',
     'answers',
+    #da third party app
+    'cloudinary_storage',
+    'cloudinary',
+    "django_extensions",
+    
 ]
 
 MIDDLEWARE = [
@@ -137,10 +148,14 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CLOUDINARY_STORAGE = {
-    "CLOUD_NAME": "dkvyfbtdl",
-    "API_KEY": "441189999198461",
-    "API_SECRET": "af5RS-cWKp_3sZqoeSNosenA6Jk",
-}
+    'CLOUD_NAME': 'dkvyfbtdl',
+    'API_KEY': '441189999198461',   
+    'API_SECRET': 'af5RS-cWKp_3sZqoeSNosenA6Jk', 
+}   
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage',
+
+AUTH_USER_MODEL = 'users.User'
+
 DEFAULT_FILE_STORAGE = ("cloudinary_storage.storage.MediaCloudinaryStorage",)
 
 REST_FRAMEWORK = {
@@ -156,6 +171,10 @@ REST_FRAMEWORK = {
 }
 
 
+CORS_ALLOW_ALL_ORIGINS = True 
+load_dotenv()
+
+CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')
 CORS_ALLOW_ALL_ORIGINS = True
 
 AUTH_USER_MODEL = "user.User"  # Point to your User model
