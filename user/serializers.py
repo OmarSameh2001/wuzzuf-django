@@ -35,7 +35,6 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'dob', 
             'education', 
             'experience', 
-            'phone_number', 
             'cv', 
             'keywords',
             'img', 

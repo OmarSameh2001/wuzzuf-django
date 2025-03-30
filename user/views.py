@@ -1,13 +1,12 @@
 from django.contrib.auth import get_user_model
-from rest_framework import generics, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, viewsets, filters
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.authtoken.views import ObtainAuthToken
 from .serializers import UserSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from .models import Company, Jobseeker
-
-
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 User = get_user_model()
@@ -62,6 +61,17 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
 #     def get_object(self):
 #         return self.request.user
+
+
+
+class JobseekerListView(generics.ListAPIView):
+    queryset = Jobseeker.objects.all()
+    serializer_class = JobseekerProfileSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]  # Allows public to view but restricts modifications
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['name', 'education', 'skills', 'location', 'keywords']  # Exact match filters
+    search_fields = ['name', 'education', 'skills','location', 'keywords']  # Partial match search
+
 
 
 
