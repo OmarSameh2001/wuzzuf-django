@@ -5,20 +5,29 @@ from jobs.serializers import JobsSerializer
 from answers.models import Answer
 from answers.serializers import AnswerSerializer
 
+
+
 class ApplicationSerializer(serializers.ModelSerializer):
     # job_id = serializers.ReadOnlyField(source='job.id')  # Include Job ID
-    # job_title = serializers.ReadOnlyField(source='job.title')  # Include Job Name
+    #job_title = serializers.ReadOnlyField(source='job.title')  # Include Job Name
     user_name = serializers.ReadOnlyField(source='user.username')  # Include User Name
+    user_email = serializers.ReadOnlyField(source='user.email')  # User Email
+    user_phone = serializers.ReadOnlyField(source='user.phone_number')  # User Phone Number
+    # user_status = serializers.ReadOnlyField(source='user.status')  # User Status (if exists)
     answers = serializers.SerializerMethodField()  # Custom method for nested answers
     job_details = JobsSerializer(read_only=True, source='job')  # Include nested Job details
-
+    # Status = serializers.ReadOnlyField(source='get_status_display')  # Include status display name
+    hr_link = serializers.CharField(required=False, allow_null=True)
+    hr_time = serializers.DateTimeField(required=False, allow_null=True)
+    interview_link = serializers.CharField(required=False, allow_null=True)
+    interview_time = serializers.DateTimeField(required=False, allow_null=True)
     class Meta:
         model = Application
         fields = [
-            'id','user', 'user_name', 'job', 'job_details', 'status', 
+            'id','user', 'user_name', 'job', 'job_details', 'status', 'user_email','user_phone',
             'ats_res', 'screening_res', 'assessment_link', 'assessment_res', 
             'interview_link', 'interview_time', 'interview_options_time', 
-            'hr_link', 'hr_time', 'hr_time_options', 'answers'
+            'hr_link', 'hr_time', 'hr_time_options', 'answers','fail'
         ]
 
     def get_answers(self, obj):
@@ -31,4 +40,6 @@ class ApplicationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Application with this user and job already exists.")
         # Create a new application with the given data
         return Application.objects.create(**validated_data)
-
+    
+    
+    

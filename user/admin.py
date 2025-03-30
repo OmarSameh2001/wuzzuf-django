@@ -8,6 +8,7 @@ class CustomUserAdmin(UserAdmin):
     ordering = ["id"]
     list_filter = ["user_type"]
     list_display = [
+        "id",
         "email",
         "username",
         "name",
@@ -61,7 +62,7 @@ class CustomUserAdmin(UserAdmin):
 
 
 class JobseekerAdmin(admin.ModelAdmin):
-    list_display = ["email", "name", "dob", "education", "experience", "cv"]
+    list_display = ["id", "email", "name", "dob", "education", "experience", "cv"]
     fieldsets = (
         (
             None,
@@ -78,7 +79,7 @@ class JobseekerAdmin(admin.ModelAdmin):
 
 
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ["email", "name", "est", "industry"]
+    list_display = ["id", "email", "name", "est", "industry"]
     fieldsets = (
         (
             None,
@@ -92,3 +93,4 @@ class CompanyAdmin(admin.ModelAdmin):
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(Jobseeker, JobseekerAdmin)
 admin.site.register(Company, CompanyAdmin)
+

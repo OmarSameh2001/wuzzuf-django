@@ -17,6 +17,6 @@ class Application(models.Model):
     hr_link = models.CharField(max_length=255, blank=True, null=True)
     hr_time = models.DateTimeField(blank=True, null=True)
     hr_time_options = models.JSONField(blank=True, null=True)  # Store multiple HR times as JSON
-
+    fail = models.BooleanField(default=False)
     def __str__(self):
         return f"{self.job.title}"
