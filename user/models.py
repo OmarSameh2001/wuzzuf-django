@@ -42,7 +42,6 @@ def validate_egyptian_national_id(value):
 
 
 class User(AbstractUser):
-    objects = UserManager()
     class UserType(models.TextChoices):
         JOBSEEKER = "JOBSEEKER", "Jobseeker"
         COMPANY = "COMPANY", "Company"
@@ -135,7 +134,6 @@ class Company(User):
         proxy = True
         verbose_name = "Company"
         verbose_name_plural = "Companies"
-        proxy = False
 
 
 class JobseekerProfile(models.Model):
