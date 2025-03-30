@@ -67,12 +67,8 @@ class Migration(migrations.Migration):
                 (
                     "user_type",
                     models.CharField(
-                        choices=[
-                            ("ADMIN", "Admin"),
-                            ("JOBSEEKER", "Jobseeker"),
-                            ("COMPANY", "Company"),
-                        ],
-                        default="ADMIN",
+                        choices=[("JOBSEEKER", "Jobseeker"), ("COMPANY", "Company")],
+                        default="JOBSEEKER",
                         max_length=20,
                     ),
                 ),
@@ -120,6 +116,25 @@ class Migration(migrations.Migration):
                 ("is_staff", models.BooleanField(default=False)),
                 ("is_superuser", models.BooleanField(default=False)),
                 ("date_joined", models.DateTimeField(auto_now_add=True)),
+                ("dob", models.DateField(blank=True, null=True)),
+                ("education", models.TextField(blank=True, null=True)),
+                ("experience", models.TextField(blank=True, null=True)),
+                ("cv", models.TextField(blank=True, null=True)),
+                ("keywords", models.TextField(blank=True, null=True)),
+                (
+                    "national_id",
+                    models.CharField(
+                        blank=True,
+                        max_length=14,
+                        null=True,
+                        unique=True,
+                        validators=[user.models.validate_egyptian_national_id],
+                    ),
+                ),
+                ("national_id_img", models.TextField(blank=True, null=True)),
+                ("skills", models.TextField(blank=True, null=True)),
+                ("est", models.DateField(blank=True, null=True)),
+                ("industry", models.CharField(blank=True, max_length=100, null=True)),
                 (
                     "groups",
                     models.ManyToManyField(
@@ -154,67 +169,72 @@ class Migration(migrations.Migration):
         ),
         migrations.CreateModel(
             name="Company",
-            fields=[
-                (
-                    "user_ptr",
-                    models.OneToOneField(
-                        auto_created=True,
-                        on_delete=django.db.models.deletion.CASCADE,
-                        parent_link=True,
-                        primary_key=True,
-                        serialize=False,
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                ("est", models.DateField(blank=True, null=True)),
-                ("industry", models.CharField(blank=True, max_length=100, null=True)),
-            ],
+            fields=[],
             options={
                 "verbose_name": "Company",
                 "verbose_name_plural": "Companies",
+                "proxy": True,
+                "indexes": [],
+                "constraints": [],
             },
             bases=("user.user",),
-            managers=[
-                ("objects", django.contrib.auth.models.UserManager()),
-            ],
         ),
         migrations.CreateModel(
             name="Jobseeker",
-            fields=[
-                (
-                    "user_ptr",
-                    models.OneToOneField(
-                        auto_created=True,
-                        on_delete=django.db.models.deletion.CASCADE,
-                        parent_link=True,
-                        primary_key=True,
-                        serialize=False,
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                ("dob", models.DateField(blank=True, null=True)),
-                ("education", models.TextField(blank=True, null=True)),
-                ("experience", models.TextField(blank=True, null=True)),
-                ("cv", models.TextField(blank=True, null=True)),
-                ("keywords", models.TextField(blank=True, null=True)),
-                (
-                    "national_id",
-                    models.CharField(
-                        max_length=14,
-                        unique=True,
-                        validators=[user.models.validate_egyptian_national_id],
-                    ),
-                ),
-                ("national_id_img", models.TextField(blank=True, null=True)),
-                ("skills", models.TextField(blank=True, null=True)),
-            ],
+            fields=[],
             options={
                 "verbose_name": "Jobseeker",
                 "verbose_name_plural": "Jobseekers",
+                "proxy": True,
+                "indexes": [],
+                "constraints": [],
             },
             bases=("user.user",),
-            managers=[
-                ("objects", django.contrib.auth.models.UserManager()),
+        ),
+        migrations.CreateModel(
+            name="CompanyProfile",
+            fields=[
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("company_id", models.IntegerField(blank=True, null=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        limit_choices_to={"user_type": "COMPANY"},
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
+        ),
+        migrations.CreateModel(
+            name="JobseekerProfile",
+            fields=[
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("jobseeker_id", models.IntegerField(blank=True, null=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        limit_choices_to={"user_type": "JOBSEEKER"},
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]
