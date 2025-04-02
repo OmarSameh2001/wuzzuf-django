@@ -7,6 +7,9 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from .models import Company, Jobseeker
 from django_filters.rest_framework import DjangoFilterBackend
+from cloudinary.uploader import upload
+from cloudinary.uploader import upload_resource
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 User = get_user_model()
@@ -31,12 +34,35 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     queryset = Jobseeker.objects.all()
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
-
+    #ll file upload
+    parser_classes = [MultiPartParser, FormParser]
     def get_object(self):
         return self.request.user
 
     def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        # return super().partial_update(request, *args, **kwargs)
+        user = self.get_object()
+        data = request.data.copy()
+
+        if 'img' in request.FILES:
+            image_upload = upload(request.FILES['img'])
+            data['img'] = image_upload['secure_url']
+
+        if 'cv' in request.FILES:
+            cv_upload = upload(request.FILES['cv'], resource_type="raw")
+            data['cv'] = cv_upload['secure_url']
+
+        if 'national_id_img' in request.FILES:
+            national_id_upload = upload(request.FILES['national_id_img'])
+            data['national_id_img'] = national_id_upload['secure_url']
+
+        serializer = self.get_serializer(user, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
+
 
 class CompanyViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.COMPANY)
@@ -48,7 +74,20 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return self.request.user
 
     def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        # return super().partial_update(request, *args, **kwargs)
+        user = self.get_object()
+        data = request.data.copy()
+
+        if 'img' in request.FILES:
+            image_upload = upload(request.FILES['img'])
+            data['img'] = image_upload['secure_url']
+
+        serializer = self.get_serializer(user, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
 
 
 # class CompleteProfileView(generics.UpdateAPIView):
@@ -69,8 +108,8 @@ class JobseekerListView(generics.ListAPIView):
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]  # Allows public to view but restricts modifications
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['name', 'education', 'skills', 'location', 'keywords']  # Exact match filters
-    search_fields = ['name', 'education', 'skills','location', 'keywords']  # Partial match search
+    filterset_fields = ['name', 'education', 'skills', 'location']  # Exact match filters
+    search_fields = ['name', 'education', 'skills','location']  # Partial match search
 
 
 

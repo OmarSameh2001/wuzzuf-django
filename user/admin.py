@@ -62,17 +62,17 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Jobseeker)
 class JobseekerAdmin(admin.ModelAdmin):
-    list_display = ["id", "email", "name", "dob", "education", "experience", "cv"]
+    list_display = ["id", "email", "name", "dob", "education", "experience", "cv", "img"]
     fieldsets = (
         (
             None,
             {
                 "fields": (
-                    "email", "username", "password", "name", "dob", "phone_number"
+                    "email", "username", "password", "name", "dob", "phone_number", "img"
                 )
             },
         ),
-        ("Profile", {"fields": ("education", "experience", "cv", "keywords")}),
+        ("Profile", {"fields": ("education", "experience", "cv")}),
         ("National ID Details", {"fields": ("national_id", "national_id_img")}),
     )
     readonly_fields = ["last_login"]
@@ -94,6 +94,6 @@ class CompanyAdmin(admin.ModelAdmin):
 
 
 admin.site.register(User, CustomUserAdmin)
-admin.site.register(Jobseeker, JobseekerAdmin)
-admin.site.register(Company, CompanyAdmin)
+# admin.site.register(Jobseeker, JobseekerAdmin)
+# admin.site.register(Company, CompanyAdmin)
 

@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext as _
 from rest_framework import serializers
 from .models import Company, Jobseeker
+from cloudinary.uploader import upload
 
 User = get_user_model()
 
@@ -27,6 +28,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class JobseekerProfileSerializer(serializers.ModelSerializer):
+    cv = serializers.FileField(required=False)
+    img = serializers.ImageField(required=False)
+    national_id_img = serializers.ImageField(required=False)
     class Meta:
         model = Jobseeker
         fields = [
@@ -36,7 +40,6 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'education', 
             'experience', 
             'cv', 
-            'keywords',
             'img', 
             'national_id', 
             'national_id_img', 
@@ -48,11 +51,21 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
 
         def update(self, instance, validated_data):
             # Update the fields for the jobseeker model
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save()
-            return instance
+          request = self.context.get('request')
+          if request and hasattr(request, "FILES"):
+            if 'img' in request.FILES:
+                image_upload = upload(request.FILES['img'])
+                validated_data['img'] = image_upload['secure_url']
 
+            if 'cv' in request.FILES:
+                cv_upload = upload(request.FILES['cv'], resource_type="raw")
+                validated_data['cv'] = cv_upload['secure_url']
+
+            if 'national_id_img' in request.FILES:
+                national_id_upload = upload(request.FILES['national_id_img'])
+                validated_data['national_id_img'] = national_id_upload['secure_url']
+
+          return super().update(instance, validated_data)
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
     class Meta:

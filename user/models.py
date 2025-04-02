@@ -11,6 +11,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.views import APIView
 import datetime
+from cloudinary.models import CloudinaryField
+
 
 # Custom Validator for Egyptian National ID
 def validate_egyptian_national_id(value):
@@ -66,7 +68,7 @@ class User(AbstractUser):
             )
         ],
     )
-    img = models.TextField(null=True, blank=True)
+    img = CloudinaryField('image', null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(
         max_length=11,
@@ -88,8 +90,8 @@ class User(AbstractUser):
     dob = models.DateField(null=True, blank=True)
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
-    cv = models.TextField(null=True, blank=True)
-    keywords = models.TextField(null=True, blank=True)
+    cv = CloudinaryField('cv', resource_type='raw', null=True, blank=True)
+    # keywords = models.TextField(null=True, blank=True)
     national_id = models.CharField(
         max_length=14,
         unique=True,
@@ -97,7 +99,7 @@ class User(AbstractUser):
         blank=True,
         validators=[validate_egyptian_national_id],
     )
-    national_id_img = models.TextField(null=True, blank=True)
+    national_id_img = CloudinaryField('image', null=True, blank=True)
     skills = models.TextField(null=True, blank=True)
 
     #company fields
@@ -111,11 +113,11 @@ class User(AbstractUser):
         return self.email
 
 
-class JobseekerManager(models.Manager):
+class JobseekerManager(BaseUserManager):
     def get_queryset(self):
         return super().get_queryset().filter(user_type=User.UserType.JOBSEEKER)
 
-class CompanyManager(models.Manager):
+class CompanyManager(BaseUserManager):
     def get_queryset(self):
         return super().get_queryset().filter(user_type=User.UserType.COMPANY)
 
@@ -134,7 +136,13 @@ class Company(User):
         proxy = True
         verbose_name = "Company"
         verbose_name_plural = "Companies"
-
+        
+    def save(self, *args, **kwargs):
+        """Ensure the user type is set to COMPANY when saving"""
+        if not self.pk:  # Only set on new objects
+            self.user_type = User.UserType.COMPANY
+        super().save(*args, **kwargs)
+    
 
 class JobseekerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.JOBSEEKER})
