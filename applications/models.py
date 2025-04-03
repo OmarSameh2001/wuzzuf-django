@@ -3,6 +3,15 @@ from jobs.models import Job
 from user.models import Jobseeker
 # Create your models here.
 class Application(models.Model):
+     
+    STATUS_CHOICES = [
+        (2, "Application Accepted"),
+        (3, "Technical Assessment"),
+        (4, "Technical Interview"),
+        (5, "HR Interview"),
+        (6, "Offer Interview"),
+    ]
+    
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(Jobseeker, on_delete=models.CASCADE)
     job = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -19,4 +28,5 @@ class Application(models.Model):
     hr_time_options = models.JSONField(blank=True, null=True)  # Store multiple HR times as JSON
     fail = models.BooleanField(default=False)
     def __str__(self):
-        return f"{self.job.title}"
+         return f"{self.user.username} - {self.job.title} - {self.status}"
+        #return f"{self.job.title}"

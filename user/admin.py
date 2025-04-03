@@ -78,19 +78,17 @@ class JobseekerAdmin(admin.ModelAdmin):
     readonly_fields = ["last_login"]
 
 
-
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ["id", "email", "name", "est", "industry"]
+    list_display = ["id", "email", "name", "est", "industry", "logo"]
     fieldsets = (
         (
             None,
             {"fields": ("email", "username", "password", "name", "phone_number")},
         ),
-        ("Company Details", {"fields": ("est", "industry")}),
+        ("Company Details", {"fields": ("est", "industry", "logo")}),
     )
     readonly_fields = ["last_login"]
-
 
 
 admin.site.register(User, CustomUserAdmin)

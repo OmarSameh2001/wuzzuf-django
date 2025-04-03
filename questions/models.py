@@ -9,7 +9,7 @@ class Question(models.Model):
     text = models.CharField(max_length=200)
     answer_q = models.CharField(max_length=200, null=True)
     type = models.CharField(max_length=50, choices=[('boolean', 'boolean'), ('multichoice', 'multichoice')], default='boolean')
-    choices = models.JSONField(null=True)
+    choices = models.JSONField(null=True, blank=True)
     required = models.BooleanField(default=True)
 
     def __str__(self):
