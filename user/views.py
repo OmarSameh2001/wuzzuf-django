@@ -88,7 +88,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanyProfileSerializer
     permission_classes = [IsAuthenticated]
-
+    parser_classes = [MultiPartParser, FormParser]
     def get_object(self):
         return self.request.user
 
@@ -100,6 +100,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
         if 'img' in request.FILES:
             image_upload = upload(request.FILES['img'])
             data['img'] = image_upload['secure_url']
+
+        if 'logo' in request.FILES:
+            logo_upload = upload(request.FILES['logo'])
+            data['logo'] = logo_upload['secure_url']   
 
         serializer = self.get_serializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)

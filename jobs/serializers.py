@@ -37,9 +37,9 @@ class JobsSerializer(serializers.ModelSerializer):
         instance.description = validated_data.get('description', instance.description)
         instance.save()
 
-    #     # Optional: Delete existing questions and replace them with new ones
-    #     instance.questions.all().delete()
-    #     for question_data in questions_data:
-    #         Question.objects.create(job=instance, **question_data)
+        # Optional: Delete existing questions and replace them with new ones
+        instance.questions.all().delete()
+        for question_data in questions_data:
+            Question.objects.create(job=instance, **question_data)
 
-    #     return instance
+        return instance

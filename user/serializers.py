@@ -71,6 +71,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
           return super().update(instance, validated_data)
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
+    logo=serializers.ImageField(required=False)
     class Meta:
         model = Company
         fields = [
@@ -82,15 +83,24 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'img',
             'location', 
             'phone_number',
-            'user_type'
+            'user_type',
+            'logo'
             ]
         read_only_fields = ['email']
         
         def update(self, instance, validated_data):
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save()
-            return instance
+            request = self.context.get('request')
+            if request and hasattr(request, "FILES"):
+                if 'img' in request.FILES:
+                     image_upload = upload(request.FILES['img'])
+                     validated_data['img'] = image_upload['secure_url']
+
+            if 'logo' in request.FILES:
+                logo_upload = upload(request.FILES['logo'])
+                validated_data['logo'] = logo_upload['secure_url']
+
+             
+            return super().update(instance, validated_data) 
 
 
 
