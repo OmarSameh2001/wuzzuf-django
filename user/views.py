@@ -19,10 +19,24 @@ class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+    def create(self, request, *args, **kwargs):
+        print(request.data)
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print("Serializer Errors:", serializer.errors)  # Print validation errors
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.save()
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            "token": token.key,
+            "user_type": user.user_type
+        })
+
 
 class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
@@ -119,11 +133,14 @@ class CustomAuthToken(ObtainAuthToken):
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            print("Serializer Errors:", serializer.errors) 
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         token, _ = Token.objects.get_or_create(user=user)
 
         user_data = {
+            "id": user.id,
             "token": token.key,
             "user_type": user.user_type,
             "email": user.email,
@@ -140,7 +157,6 @@ class CustomAuthToken(ObtainAuthToken):
                 "education": user.education,
                 "experience": user.experience,
                 "cv": user.cv,
-                "keywords": user.keywords,
                 "skills": user.skills,
             })
 

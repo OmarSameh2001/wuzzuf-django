@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     "django_extensions",
+    'rest_framework',
     
 ]
 

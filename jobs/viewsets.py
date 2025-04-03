@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import JobFilter
+from rest_framework import serializers
+from questions.models import Question
 
 
 
@@ -29,15 +31,19 @@ class JobsViewSet(viewsets.ModelViewSet):
     filterset_class = JobFilter
     pagination_class = JobPagination
     def create(self, request, *args, **kwargs):
+        try:
+            print("validated_data", request.data)
+            validated_data = request.data
+            questions_data = validated_data.pop('questions', [])  # Extract questions
+            job = Job.objects.create(**validated_data)
 
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            job_instance = serializer.save() 
-            
+            for question_data in questions_data:
+                Question.objects.create(job=job, **question_data)  # Link each question to the job
+
             fastapi_data = {
-                "id": job_instance.id,
-                "title": job_instance.title,
-                "description": job_instance.description,
+                "id": job.id,
+                "title": job.title,
+                "description": job.description,
                
             }
             print("fastaopi data ",fastapi_data)
@@ -49,9 +55,34 @@ class JobsViewSet(viewsets.ModelViewSet):
                 print("fastapi_response",fastapi_response)
                 return Response({"django_job": serializer.data, "fastapi_job": fastapi_response}, status=201)
             except requests.exceptions.RequestException as e:
-                return Response({"error": f"Failed to sync with FastAPI: {str(e)}"}, status=500)
+                print("FastAPI request error:", e)
+            return JsonResponse({"django_job": self.get_serializer(job).data, "fastapi_job": 'failed'}, status=201)
+        except Exception as e:
+            raise serializers.ValidationError(f"An error occurred while creating the job: {e}")
+    # def create(self, request, *args, **kwargs):
+
+    #     serializer = self.get_serializer(data=request.data)
+    #     if serializer.is_valid():
+    #         job_instance = serializer.save() 
+            
+    #         fastapi_data = {
+    #             "id": job_instance.id,
+    #             "title": job_instance.title,
+    #             "description": job_instance.description,
+               
+    #         }
+    #         print("fastaopi data ",fastapi_data)
+    #         try:
+    #             response = requests.post(FASTAPI_URL, json=fastapi_data)
+    #             response.raise_for_status()  # Raise an exception for 4xx/5xx responses
+                
+    #             fastapi_response = response.json()
+    #             print("fastapi_response",fastapi_response)
+    #             return Response({"django_job": serializer.data, "fastapi_job": fastapi_response}, status=201)
+    #         except requests.exceptions.RequestException as e:
+    #             return Response({"error": f"Failed to sync with FastAPI: {str(e)}"}, status=500)
         
-        return Response(serializer.errors, status=400)
+    #     return Response(serializer.errors, status=400)
     
 
     def update(self, request, pk=None, partial=False):

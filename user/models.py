@@ -49,6 +49,7 @@ class User(AbstractUser):
         COMPANY = "COMPANY", "Company"
 
     #shared fields
+    id = models.AutoField(primary_key=True)
     user_type = models.CharField(
         max_length=20,
         choices=UserType.choices,
