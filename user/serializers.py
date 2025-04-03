@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class JobseekerProfileSerializer(serializers.ModelSerializer):
     id=serializers.CharField(read_only=True)
-    cv = serializers.FileField(required=False)
+    cv = serializers.CharField(required=False)
     img = serializers.ImageField(required=False)
     national_id_img = serializers.ImageField(required=False)
     class Meta:

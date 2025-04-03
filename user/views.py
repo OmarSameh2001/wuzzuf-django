@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from rest_framework import generics, viewsets, filters
+from rest_framework import generics, viewsets, filters, serializers
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.authtoken.views import ObtainAuthToken
 from .serializers import UserSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
@@ -50,11 +50,13 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     #ll file upload
     parser_classes = [MultiPartParser, FormParser]
+    cv = serializers.FileField()
     def get_object(self):
         return self.request.user
 
     def partial_update(self, request, *args, **kwargs):
         # return super().partial_update(request, *args, **kwargs)
+        print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
         data = request.data.copy()
 
@@ -63,14 +65,17 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             data['img'] = image_upload['secure_url']
 
         if 'cv' in request.FILES:
+            print(request.FILES['cv'])
             cv_upload = upload(request.FILES['cv'], resource_type="raw")
-            data['cv'] = cv_upload['secure_url']
+            data['cv'] = cv_upload['secure_url'] + ".pdf"
 
         if 'national_id_img' in request.FILES:
             national_id_upload = upload(request.FILES['national_id_img'])
             data['national_id_img'] = national_id_upload['secure_url']
 
         serializer = self.get_serializer(user, data=data, partial=True)
+        if not serializer.is_valid():
+            print("🔴 Serializer Errors:", serializer.errors)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
