@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from .models import Company, Jobseeker
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
+from rest_framework.decorators import api_view
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 
@@ -63,6 +64,19 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+# @api_view(['PATCH'])
+# def update_jobseeker(request, pk):
+#     jobseeker = get_object_or_404(Jobseeker, pk=pk)
+    
+#     print("Received Data:", request.data)  # Debugging received data
+    
+#     serializer = JobseekerSerializer(jobseeker, data=request.data, partial=True)
+    
+#     if serializer.is_valid():
+#         serializer.save()
+#         return Response(serializer.data)
+    
+#     return Response(serializer.errors, status=400)
 
 class CompanyViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.COMPANY)
@@ -125,6 +139,7 @@ class CustomAuthToken(ObtainAuthToken):
 
         user_data = {
             "token": token.key,
+            "id": user.id,
             "user_type": user.user_type,
             "email": user.email,
             "name": user.name,

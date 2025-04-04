@@ -34,6 +34,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Jobseeker
         fields = [
+            'id',
             'email', 
             'name', 
             'dob', 
@@ -47,9 +48,9 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'phone_number',
             'skills'
             ]
-        read_only_fields = ['email']
+        read_only_fields = ['email', 'id']
 
-        def update(self, instance, validated_data):
+    def update(self, instance, validated_data):
             # Update the fields for the jobseeker model
           request = self.context.get('request')
           if request and hasattr(request, "FILES"):
