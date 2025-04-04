@@ -179,7 +179,19 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Failed to send interview email to {application.user.email}: {e}")
-            return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(f"Failed to send interview email to {application.user.email}: {e}")
+            # return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": f"{interview_types[interview_phase]} scheduled successfully"}, status=status.HTTP_200_OK)
+
+    @action(methods=["patch"], detail=True)
+    def set_assessment_link(self, request, pk=None):
+        """Updates application with new assessment link"""
+        application = self.get_object()
+        assessment_link = request.data.get("assessment_link")
+        if assessment_link is None:
+            return Response({"error": "Assessment link is required"}, status=status.HTTP_400_BAD_REQUEST)
+        application.assessment_link = assessment_link
+        application.save()
+        return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
  
