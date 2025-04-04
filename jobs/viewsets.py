@@ -13,6 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .filters import JobFilter
 from rest_framework import serializers
 from questions.models import Question
+from user.models import Company
 
 
 
@@ -35,6 +36,9 @@ class JobsViewSet(viewsets.ModelViewSet):
             print("validated_data", request.data)
             validated_data = request.data
             questions_data = validated_data.pop('questions', [])  # Extract questions
+            company = Company.objects.get(id=validated_data['company'])
+            validated_data['company'] = company
+            
             job = Job.objects.create(**validated_data)
 
             for question_data in questions_data:

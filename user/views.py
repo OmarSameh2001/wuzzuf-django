@@ -10,6 +10,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.pagination import PageNumberPagination
+from .filters import JobseekerFilter
 
 
 User = get_user_model()
@@ -124,15 +126,18 @@ class CompanyViewSet(viewsets.ModelViewSet):
 #     def get_object(self):
 #         return self.request.user
 
-
+class JobSeekerPagination(PageNumberPagination):
+     page_size = 5  # Adjust as needed
+     page_size_query_param = 'page_size'
+     max_page_size = 100
 
 class JobseekerListView(generics.ListAPIView):
     queryset = Jobseeker.objects.all()
     serializer_class = JobseekerProfileSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]  # Allows public to view but restricts modifications
+    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['name', 'education', 'skills', 'location']  # Exact match filters
-    search_fields = ['name', 'education', 'skills','location']  # Partial match search
+    pagination_class = JobSeekerPagination
+    filterset_class = JobseekerFilter
 
 
 
@@ -154,7 +159,7 @@ class CustomAuthToken(ObtainAuthToken):
             "user_type": user.user_type,
             "email": user.email,
             "name": user.name,
-            "img": user.img,
+            "img": str(user.img) if user.img else None,
             "location": user.location,
             "phone_number": user.phone_number,
         }
@@ -165,7 +170,7 @@ class CustomAuthToken(ObtainAuthToken):
                 "dob": user.dob,
                 "education": user.education,
                 "experience": user.experience,
-                "cv": user.cv,
+                "cv": str(user.cv) if user.cv else None,
                 "skills": user.skills,
             })
 
@@ -177,3 +182,4 @@ class CustomAuthToken(ObtainAuthToken):
             })
 
         return Response(user_data)
+

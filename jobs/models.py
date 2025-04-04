@@ -10,6 +10,7 @@ class Job(models.Model):
     experince = models.CharField(max_length=100)
     status = models.CharField(max_length=100)
     type_of_job = models.CharField(max_length=100)
+    attend = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True )
     company = models.ForeignKey(
     User,

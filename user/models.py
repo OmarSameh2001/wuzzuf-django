@@ -88,6 +88,7 @@ class User(AbstractUser):
     date_joined = models.DateTimeField(auto_now_add=True)
 
     #jobseeker fields
+    about=models.TextField(null=True, blank=True)
     dob = models.DateField(null=True, blank=True)
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)

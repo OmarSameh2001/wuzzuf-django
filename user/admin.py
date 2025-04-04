@@ -27,6 +27,7 @@ class CustomUserAdmin(UserAdmin):
                     "phone_number",
                     "location",
                     "img",
+                    
                 )
             },
         ),
@@ -68,7 +69,7 @@ class JobseekerAdmin(admin.ModelAdmin):
             None,
             {
                 "fields": (
-                    "email", "username", "password", "name", "dob", "phone_number", "img"
+                    "email", "username", "password", "name", 'about', "dob", "phone_number", "img"
                 )
             },
         ),

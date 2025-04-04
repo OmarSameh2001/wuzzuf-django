@@ -29,15 +29,32 @@ class UserSerializer(serializers.ModelSerializer):
 
 class JobseekerProfileSerializer(serializers.ModelSerializer):
     id=serializers.CharField(read_only=True)
-    cv = serializers.CharField(required=False)
-    img = serializers.ImageField(required=False)
-    national_id_img = serializers.ImageField(required=False)
+    cv = serializers.SerializerMethodField('get_cv_link')
+    img = serializers.SerializerMethodField('get_img_link')
+
+    def get_cv_link(self, obj):
+        if obj.cv:
+            return obj.cv.url
+        return None
+
+    def get_img_link(self, obj):
+        if obj.img:
+            return obj.img.url
+        return None
+
+    national_id_img = serializers.SerializerMethodField('get_national_id_img_link')
+
+    def get_national_id_img_link(self, obj):
+        if obj.national_id_img:
+            return obj.national_id_img.url
+        return None
     class Meta:
         model = Jobseeker
         fields = [
             'id',
             'email', 
-            'name', 
+            'name',
+            'about', 
             'dob', 
             'education', 
             'experience', 
@@ -119,7 +136,7 @@ class AuthTokenSerializer(serializers.Serializer):
             username=email,
             password=password
         )
-        print(email,password)
+        print(email,password, user)
         if not user:
             raise serializers.ValidationError(_('Unable to authenticate with provided credentials'), code='authorization')
         attrs['user'] = user
