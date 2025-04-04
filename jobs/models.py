@@ -15,9 +15,7 @@ class Job(models.Model):
     User,
     on_delete=models.CASCADE,
     limit_choices_to={'user_type': User.UserType.COMPANY},
-    related_name='jobs',
-    null=True,  
-    blank=True  
+    related_name='jobs'
     )
     def __str__(self):
         return self.title

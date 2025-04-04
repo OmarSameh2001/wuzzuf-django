@@ -26,8 +26,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
         fields = [
             'id','user', 'user_name', 'job', 'job_details', 'status', 'user_email','user_phone',
             'ats_res', 'screening_res', 'assessment_link', 'assessment_res', 
-            'interview_link', 'interview_time', 'interview_options_time', 
-            'hr_link', 'hr_time', 'hr_time_options', 'answers','fail'
+            'interview_link', 'interview_time', 
+            'hr_link', 'hr_time', 'offer_time', 'offer_link', 'answers','fail'
         ]
 
     def get_answers(self, obj):

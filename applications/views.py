@@ -157,9 +157,12 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if interview_phase == 3:
             application.interview_time = interview_time
             application.interview_link = interview_link
-        else:
+        elif interview_phase == 4:
             application.hr_time = interview_time
             application.hr_link = interview_link
+        elif interview_phase == 5:
+            application.offer_time = interview_time
+            application.offer_link = interview_link
 
         application.save()
 

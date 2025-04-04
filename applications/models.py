@@ -22,10 +22,12 @@ class Application(models.Model):
     assessment_res = models.TextField(blank=True, null=True)
     interview_link = models.CharField(max_length=255, blank=True, null=True)
     interview_time = models.DateTimeField(blank=True, null=True)
-    interview_options_time = models.JSONField(blank=True, null=True)  # Store multiple times as JSON
+    # interview_options_time = models.JSONField(blank=True, null=True)  # Store multiple times as JSON
     hr_link = models.CharField(max_length=255, blank=True, null=True)
     hr_time = models.DateTimeField(blank=True, null=True)
-    hr_time_options = models.JSONField(blank=True, null=True)  # Store multiple HR times as JSON
+    # hr_time_options = models.JSONField(blank=True, null=True)  # Store multiple HR times as JSON
+    offer_time = models.DateTimeField(blank=True, null=True)
+    offer_link = models.CharField(max_length=255, blank=True, null=True)
     fail = models.BooleanField(default=False)
     def __str__(self):
          return f"{self.user.username} - {self.job.title} - {self.status}"
