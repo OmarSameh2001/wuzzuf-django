@@ -21,8 +21,8 @@ def get_recommendationsView(request , user_id ,):
     cv_url = user.cv
     print(cv_url)
 
-    page = request.GET.get('page', 1)
-    page_size = request.GET.get('page_size', 5)
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 5))
 
     # fastapi_url = f"{FASTAPI_URL}/?user_skills={user_skills}&page={page}&page_size={page_size}"
     fastapi_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}&page={page}&page_size={page_size}"
@@ -37,7 +37,7 @@ def get_recommendationsView(request , user_id ,):
         return JsonResponse({
             "page": page,
             "page_size": page_size,
-            "total_pages": total_pages,
+            "total_pages": (total_results + page_size - 1),
             "total_results": total_results,
             "recommendations": data.get("recommendations", [])
         })

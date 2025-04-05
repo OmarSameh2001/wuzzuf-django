@@ -5,21 +5,26 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from jobs.models import Job
+from jobs.models import Job 
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ApplicationFilter
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.core.mail import send_mail
-from rest_framework import status
+from rest_framework import  viewsets, status
 from django.utils.timezone import make_aware
 from rest_framework.viewsets import ModelViewSet
 import datetime
 import logging
-
+import requests
+import json
 
 logger = logging.getLogger(__name__)
+
+
+
+FASTAPI_URL = "http://127.0.0.1:8001" 
 
 class CustomPagination(PageNumberPagination):
      page_size = 5  # Adjust as needed
@@ -48,6 +53,40 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         5: "We’re sorry to inform you that you were not selected after the HR Interview.",
         6: "Unfortunately, we will not be proceeding with your offer interview."
     }
+
+    def perform_create(self, serializer):
+        print("serializer")
+        application = serializer.save()
+        if int(application.status) > 1:
+            perform_create_for_admin(application)
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error in creating application: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+    def update(self, request, *args, **kwargs):
+        """Override update method to handle custom logic."""
+        instance = self.get_object()
+        res = perform_create_for_admin(instance)
+        def update(self, request, *args, **kwargs):
+            """Override update method to handle custom logic."""
+        instance = self.get_object()
+        res = perform_create_for_admin(instance)
+        print(request.data)
+        return super().update(request, *args, **kwargs)
+        for field, value in request.data.items():
+            setattr(instance, field, value)
+        instance.save()    
+        print("Updated object:", instance)
+        return super().update(request, *args, **kwargs)
+        
+
+          
 
 
     @action(detail=True, methods=["patch"])
@@ -186,7 +225,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             # return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": f"{interview_types[interview_phase]} scheduled successfully"}, status=status.HTTP_200_OK)
-
     @action(methods=["patch"], detail=True)
     def set_assessment_link(self, request, pk=None):
         """Updates application with new assessment link"""
@@ -197,4 +235,40 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         application.assessment_link = assessment_link
         application.save()
         return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
+ 
+ 
+def perform_create_for_admin(application):
+    print(application)
+    user_id = application.user.id
+    job_id = application.job.id
+    cv_url = application.user.cv.url.split('/raw/upload/')[-1].replace('.pdf', '')
+    
+    if not cv_url:
+        raise ValueError("User CV not found")
+
+    ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
+    ats_data = {"cv_url": cv_url, "job_id": job_id}
+
+    ats_response = requests.post(ats_url, json=ats_data)
+    ats_result = ats_response.json()
+
+    if ats_response.status_code != 200:
+        raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+
+    recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
+    recommendation_response = requests.get(recommendation_url)
+    recommendations = recommendation_response.json()
+
+    if recommendation_response.status_code != 200:
+        raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
+
+    application.ats_res = ats_result.get("match_percentage", 0)
+    recommendations_list = recommendations.get("recommendations", [])
+    application.screening_res = json.dumps([job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None])
+    application.save()
+
+    return ats_result, recommendations
+ 
+ 
+
  

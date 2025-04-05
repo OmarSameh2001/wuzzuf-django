@@ -3,7 +3,7 @@ from jobs.models import Job
 from user.models import Jobseeker
 # Create your models here.
 class Application(models.Model):
-     
+ 
     STATUS_CHOICES = [
         (2, "Application Accepted"),
         (3, "Technical Assessment"),
