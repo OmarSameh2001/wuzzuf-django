@@ -31,7 +31,8 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
 class JobseekerViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
-    queryset = Jobseeker.objects.all()
+    # queryset = Jobseeker.objects.all()
+    queryset = Jobseeker.objects.all().order_by('id')
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
     #ll file upload

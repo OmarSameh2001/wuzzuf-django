@@ -28,18 +28,36 @@ class JobsViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = JobFilter
     pagination_class = JobPagination
+    
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
     def create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             job_instance = serializer.save() 
-            
+            #print("Company logo debug:", job_instance.company.img.url)
             fastapi_data = {
                 "id": job_instance.id,
                 "title": job_instance.title,
                 "description": job_instance.description,
-               
+                "location": job_instance.location,
+                "status": job_instance.status,
+                "type_of_job": job_instance.type_of_job,
+                "experince": job_instance.experince,
+                "company": job_instance.company.id,
+                "company_name": job_instance.company.name,
+                "company_logo": self.get_serializer_context()['request'].build_absolute_uri(
+                    job_instance.company.img.url
+                ) if job_instance.company.img else "None",
+                # "created_at": job_instance.created_at.isoformat()
             }
+               
+            print ("company_instance",job_instance.company)
             print("fastaopi data ",fastapi_data)
             try:
                 response = requests.post(FASTAPI_URL, json=fastapi_data)
@@ -70,6 +88,15 @@ class JobsViewSet(viewsets.ModelViewSet):
             "id": updated_job.id,
             "title": updated_job.title,
             "description": updated_job.description,
+            "location": updated_job.location,
+            "status": updated_job.status,
+            "type_of_job": updated_job.type_of_job,
+            "experince": updated_job.experince, 
+            "company": updated_job.company.id,
+            "company_name": updated_job.company.name,
+            "company_logo": self.get_serializer_context()['request'].build_absolute_uri(
+                updated_job.company.img.url
+            ) if updated_job.company.img else None,
           }
           try:
             fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)

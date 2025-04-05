@@ -32,12 +32,37 @@ class JobAdmin(admin.ModelAdmin):
             "id": obj.id,
             "title": obj.title,
             "description": obj.description,
+            "location": obj.location,
+            "status": obj.status,
+            "type_of_job": obj.type_of_job,
+            "experince": obj.experince,
+            "company": obj.company.id,
+            "company_name": obj.company.name,
+            "company_logo": request.build_absolute_uri(obj.company.img.url) if obj.company.img else None,
+
         }
         try:
-            response = requests.post(FASTAPI_URL, json=fastapi_data)
+            if change:
+                # If the job is being updated
+             response = requests.put(f"{FASTAPI_URL}/{obj.id}", json=fastapi_data)
+            else:
+            # If the job is being created
+             response = requests.post(FASTAPI_URL, json=fastapi_data)
+
+            response.raise_for_status()
+
+        except requests.exceptions.RequestException as e:
+          self.message_user(request, f"Failed to sync with FastAPI: {e}", level='ERROR')
+          
+          
+    def delete_model(self, request, obj):
+        try:
+            response = requests.delete(f"{FASTAPI_URL}/{obj.id}")
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            self.message_user(request, f"Failed to sync with FastAPI: {e}", level='ERROR')
+            self.message_user(request, f"Failed to delete from FastAPI: {e}", level='ERROR')
+
+        super().delete_model(request, obj)      
 
 admin.site.register(Job, JobAdmin)
 
