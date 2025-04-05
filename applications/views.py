@@ -55,102 +55,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     }
 
     def perform_create(self, serializer):
-        """
-        Override the default create method to submit an application,
-        then fetch ATS score and job recommendations from FastAPI.
-        """
         application = serializer.save()
-        user_id = application.user.id
-        job_id = application.job.id
-        #cv_url = application.user.cv.url if application.user.cv else None   # Ensure the user has a stored CV URL
-        cv_url = application.user.cv.url.split('/raw/upload/')[-1].replace('.pdf', '')
-        print(user_id, job_id, cv_url)
-        # Check if CV URL is valid
+        perform_create_for_admin(application)
         
-     
-        if not cv_url:
-            return Response({"error": "User CV not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Call FastAPI ATS Service
-        ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
-        ats_data = {"cv_url": cv_url, "job_id": job_id}
-        print(ats_url)
-        print(ats_data)
-
-        try:
-            ats_response = requests.post(ats_url, json=ats_data)
-            ats_result = ats_response.json()
-            print(ats_result)
-            if ats_response.status_code != 200:
-                raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
-        except Exception as e:
-            return Response({"error": f"ATS call failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # Call FastAPI Job Recommendation Service
-        recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
-        try:
-            recommendation_response = requests.get(recommendation_url)
-            recommendations = recommendation_response.json()
-            if recommendation_response.status_code != 200:
-                raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
-        except Exception as e:
-            return Response({"error": f"Recommendation call failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-     #    # Attach ATS score and recommendations to response
-     #    return Response({
-     #        "message": "Application submitted successfully",
-     #        "application_id": application.id,
-     #        "ats_score": ats_result.get("score", "N/A"),
-     #        "recommendations": recommendations.get("recommendations", [])
-     #    }, status=status.HTTP_201_CREATED)
-
-     ### 3️⃣ Store ATS Results and Recommended Job IDs in the Database
-        application.ats_res = ats_result.get("match_percentage", 0)  # Store ATS as JSON string
-        recommendations_list = recommendations.get("recommendations", [])
-        application.screening_res = json.dumps([
-            job.get("id") or job.get("_id")  # Try both common ID fields
-            for job in recommendations_list
-            if job.get("id") is not None or job.get("_id") is not None
-        ])
-        application.save()
-
-        ### 4️⃣ Return Response
-        return Response({
-            "message": "Application submitted successfully",
-            "application_id": application.id,
-            "ats_score": ats_result.get("score", "N/A"),
-            "recommendations": recommendations.get("recommendations", [])
-        }, status=status.HTTP_201_CREATED)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+          
 
 
     @action(detail=True, methods=["patch"])
@@ -285,4 +194,37 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": f"{interview_types[interview_phase]} scheduled successfully"}, status=status.HTTP_200_OK)
+ 
+ 
+def perform_create_for_admin(application):
+    print(application)
+    user_id = application.user.id
+    job_id = application.job.id
+    cv_url = application.user.cv.url.split('/raw/upload/')[-1].replace('.pdf', '')
+    
+    if not cv_url:
+        raise ValueError("User CV not found")
+
+    ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
+    ats_data = {"cv_url": cv_url, "job_id": job_id}
+
+    ats_response = requests.post(ats_url, json=ats_data)
+    ats_result = ats_response.json()
+
+    if ats_response.status_code != 200:
+        raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+
+    recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
+    recommendation_response = requests.get(recommendation_url)
+    recommendations = recommendation_response.json()
+
+    if recommendation_response.status_code != 200:
+        raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
+
+    application.ats_res = ats_result.get("match_percentage", 0)
+    recommendations_list = recommendations.get("recommendations", [])
+    application.screening_res = json.dumps([job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None])
+    application.save()
+
+    return ats_result, recommendations
  
