@@ -48,6 +48,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'location', 
             'phone_number',
             'skills',
+            'keywords',
             'user_type'
             ]
         read_only_fields = ['email']

@@ -16,6 +16,9 @@ import cloudinary.uploader
 import cloudinary.api
 import os
 from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 # from cloudinary.storage import CloudinaryStorage
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -144,12 +147,21 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Cloudinary Configuration
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dkvyfbtdl',
-    'API_KEY': '441189999198461',   
-    'API_SECRET': 'af5RS-cWKp_3sZqoeSNosenA6Jk', 
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME', 'dkvyfbtdl'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY', '441189999198461'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', 'af5RS-cWKp_3sZqoeSNosenA6Jk'),
 }   
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage',
+
+# Apply Cloudinary Configuration
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE["CLOUD_NAME"],
+    api_key=CLOUDINARY_STORAGE["API_KEY"],
+    api_secret=CLOUDINARY_STORAGE["API_SECRET"]
+)
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 AUTH_USER_MODEL = 'users.User'
 

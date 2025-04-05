@@ -154,7 +154,7 @@ class CustomAuthToken(ObtainAuthToken):
             "user_type": user.user_type,
             "email": user.email,
             "name": user.name,
-            "img": user.img,
+            "img": str(user.img) if user.img else None,
             "location": user.location,
             "phone_number": user.phone_number,
         }
@@ -165,7 +165,7 @@ class CustomAuthToken(ObtainAuthToken):
                 "dob": user.dob,
                 "education": user.education,
                 "experience": user.experience,
-                "cv": user.cv,
+                "cv": str(user.cv) if user.cv else None,
                 "skills": user.skills,
             })
 
