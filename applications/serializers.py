@@ -38,6 +38,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
         # Never have same application with user id and job id same
         if Application.objects.filter(user=validated_data['user'], job=validated_data['job']).exists():
             raise serializers.ValidationError("Application with this user and job already exists.")
+        if validated_data['job'].status != "1":
+            raise serializers.ValidationError("Job is not open for applications.")
         # Create a new application with the given data
         return Application.objects.create(**validated_data)
     

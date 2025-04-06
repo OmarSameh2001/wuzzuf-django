@@ -92,27 +92,39 @@ class JobsViewSet(viewsets.ModelViewSet):
     def update(self, request, pk=None, partial=False):
         try:
          job = Job.objects.get(pk=pk)
+         print("job", job)
         except Job.DoesNotExist:
          return Response({"error": "Job not found in django "}, status=404)
 
-        serializer = JobsSerializer(job, data=request.data, partial=partial)
-     
-        if serializer.is_valid():
-          updated_job = serializer.save()
         
-        # Sync with FastAPI
-          fastapi_data = {
-            "id": updated_job.id,
-            "title": updated_job.title,
-            "description": updated_job.description,
-          }
-          try:
-            fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
-            fastapi_response.raise_for_status()
-          except requests.exceptions.RequestException as e:
-            return Response({"error": f"Failed to sync update with FastAPI: {e}"}, status=500)
+        questions_data = request.data.pop('questions', [])
+        serializer = JobsSerializer(job, data=request.data, partial=partial)
+        if serializer.is_valid():
+          print("validated_data")
 
-          return Response(serializer.data)
+        # print("instance", validated_data)
+        # print("questions data", questions_data)
+        # Delete existing questions and replace them with new ones
+        Question.objects.filter(job=job).delete()
+        for question_data in questions_data:
+            print("question data", question_data, job)
+            question_data.pop('job', None)
+            Question.objects.create(job=job, **question_data)
+
+        # Sync with FastAPI
+        fastapi_data = {
+          "id": job.id,
+          "title": job.title,
+          "description": job.description,
+        }
+        try:
+          fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
+          fastapi_response.raise_for_status()
+          return Response({"django_job": serializer.data, "fastapi_job": fastapi_response.json()}, status=200)
+        except requests.exceptions.RequestException as e:
+          JsonResponse({"django_job": self.get_serializer(job).data, "fastapi_job": 'failed'}, status=200)
+
+        return Response(serializer.data)
 
         return Response(serializer.errors, status=400)
 

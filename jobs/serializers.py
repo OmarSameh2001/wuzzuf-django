@@ -12,7 +12,7 @@ class JobsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
      
-        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job', 'location',  'status', 'created_at', 'questions']# 'questions',
+        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job','attend', 'location',  'status', 'created_at', 'questions']# 'questions',
 
     def get_questions(self, obj):
         return QuestionSerializer(Question.objects.filter(job=obj), many=True).data
@@ -35,11 +35,20 @@ class JobsSerializer(serializers.ModelSerializer):
         questions_data = validated_data.pop('questions', [])
         instance.title = validated_data.get('title', instance.title)
         instance.description = validated_data.get('description', instance.description)
+        instance.experince = validated_data.get('experince', instance.experince)
+        instance.type_of_job = validated_data.get('type_of_job', instance.type_of_job)
+        instance.attend = validated_data.get('attend', instance.attend)
+        instance.location = validated_data.get('location', instance.location)
+        instance.status = validated_data.get('status', instance.status)
         instance.save()
 
-        # Optional: Delete existing questions and replace them with new ones
-        instance.questions.all().delete()
+        print("instance", validated_data)
+        print("questions data", questions_data)
+        # Delete existing questions and replace them with new ones
+        Question.objects.filter(job=instance).delete()
         for question_data in questions_data:
+            print("question data", question_data)
             Question.objects.create(job=instance, **question_data)
 
         return instance
+    
