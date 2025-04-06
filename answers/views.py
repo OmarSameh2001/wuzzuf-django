@@ -20,7 +20,7 @@ class AnswerViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=data, many=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
+        headers = self.get_success_headers(serializer.data)  
         return Response(serializer.data, status=201, headers=headers)
 
     def get_serializer_many(self, *args, **kwargs):
