@@ -40,6 +40,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Application with this user and job already exists.")
         if validated_data['job'].status != "1":
             raise serializers.ValidationError("Job is not open for applications.")
+        if validated_data['user'].cv is None:
+            raise serializers.ValidationError("User CV is required.")
         # Create a new application with the given data
         return Application.objects.create(**validated_data)
     

@@ -52,7 +52,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     #ll file upload
     parser_classes = [MultiPartParser, FormParser]
-    cv = serializers.FileField()
+    # cv = serializers.FileField()
     def get_object(self):
         return self.request.user
 
@@ -69,12 +69,14 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         if 'cv' in request.FILES:
             print(request.FILES['cv'])
             cv_upload = upload(request.FILES['cv'], resource_type="raw")
-            data['cv'] = cv_upload['secure_url'] + ".pdf"
+            print("cv_upload", cv_upload['secure_url'])
+            data['cv'] = cv_upload['secure_url']
 
         if 'national_id_img' in request.FILES:
             national_id_upload = upload(request.FILES['national_id_img'])
             data['national_id_img'] = national_id_upload['secure_url']
 
+        print(data['cv'])
         serializer = self.get_serializer(user, data=data, partial=True)
         if not serializer.is_valid():
             print("🔴 Serializer Errors:", serializer.errors)

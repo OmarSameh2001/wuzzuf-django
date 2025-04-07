@@ -29,8 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 class JobseekerProfileSerializer(serializers.ModelSerializer):
     id=serializers.CharField(read_only=True)
-    cv = serializers.SerializerMethodField('get_cv_link')
-    img = serializers.SerializerMethodField('get_img_link')
+    cv = serializers.CharField(required=False, allow_blank=True)
+    img = serializers.CharField(required=False, allow_blank=True)
 
     def get_cv_link(self, obj):
         if obj.cv:
@@ -42,7 +42,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             return obj.img.url
         return None
 
-    national_id_img = serializers.SerializerMethodField('get_national_id_img_link')
+    national_id_img = serializers.CharField(required=False, allow_blank=True)
 
     def get_national_id_img_link(self, obj):
         if obj.national_id_img:
@@ -71,6 +71,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
 
         def update(self, instance, validated_data):
             # Update the fields for the jobseeker model
+        #   print("validated_data", validated_data)
           request = self.context.get('request')
           if request and hasattr(request, "FILES"):
             if 'img' in request.FILES:

@@ -9,7 +9,8 @@ class JobFilter(django_filters.FilterSet):
     type_of_job = django_filters.CharFilter(field_name="type_of_job", lookup_expr="icontains")
     company = django_filters.CharFilter(field_name="company")
     status = django_filters.CharFilter(field_name="status", lookup_expr="icontains")
+    attend =django_filters.CharFilter(field_name="attend", lookup_expr="icontains")
 
     class Meta:
         model = Job
-        fields = ['id', 'title', 'location', 'experience', 'type_of_job', 'company', 'status']
+        fields = ['id', 'title', 'location', 'experience', 'type_of_job', 'company', 'status', 'attend']
