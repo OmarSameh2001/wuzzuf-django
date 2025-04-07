@@ -55,7 +55,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['email']
 
 
-        def update(self, instance, validated_data):
+    def update(self, instance, validated_data):
             # Update the fields for the jobseeker model
           request = self.context.get('request')
           if request and hasattr(request, "FILES"):
