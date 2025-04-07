@@ -17,8 +17,24 @@ class JobsSerializer(serializers.ModelSerializer):
     def get_questions(self, obj):
         return QuestionSerializer(Question.objects.filter(job=obj), many=True).data
 
+    def get_company_logo(self, obj):
+        if obj.company.img:
+            print("company logo",obj.company.img.url)
+            from cloudinary import CloudinaryImage
+            img = CloudinaryImage(str(obj.company.img))
+            return img.build_url()
+            # return obj.company.img.url
+        #self.context['request'].build_absolute_uri(obj.company.img.url)
+        return None
 
-
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['company_logo'] = self.get_company_logo(instance)
+        return representation
+    
+    
+    
+    
     def create(self, validated_data):
         try:
             questions_data = validated_data.pop('questions', [])  # Extract questions
@@ -32,12 +48,17 @@ class JobsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"An error occurred while creating the job: {e}")
 
     def update(self, instance, validated_data):
-        questions_data = validated_data.pop('questions', [])
+        # questions_data = validated_data.pop('questions', [])
         instance.title = validated_data.get('title', instance.title)
         instance.description = validated_data.get('description', instance.description)
         instance.experince = validated_data.get('experince', instance.experince)
         instance.type_of_job = validated_data.get('type_of_job', instance.type_of_job)
         instance.attend = validated_data.get('attend', instance.attend)
+        instance.location = validated_data.get('location', instance.location)
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+        instance.experince = validated_data.get('experince', instance.experince)
+        instance.type_of_job = validated_data.get('type_of_job', instance.type_of_job)
         instance.location = validated_data.get('location', instance.location)
         instance.status = validated_data.get('status', instance.status)
         instance.save()

@@ -47,43 +47,58 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
 class JobseekerViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
-    queryset = Jobseeker.objects.all()
+    # queryset = Jobseeker.objects.all()
+    queryset = Jobseeker.objects.all().order_by('id')
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
     #ll file upload
     parser_classes = [MultiPartParser, FormParser]
     # cv = serializers.FileField()
+    # cv = serializers.FileField()
     def get_object(self):
         return self.request.user
 
     def partial_update(self, request, *args, **kwargs):
-        # return super().partial_update(request, *args, **kwargs)
+        # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
         data = request.data.copy()
 
+        # Handle image uploads
         if 'img' in request.FILES:
             image_upload = upload(request.FILES['img'])
             data['img'] = image_upload['secure_url']
 
+        # Handle CV upload
         if 'cv' in request.FILES:
             print(request.FILES['cv'])
             cv_upload = upload(request.FILES['cv'], resource_type="raw")
-            print("cv_upload", cv_upload['secure_url'])
             data['cv'] = cv_upload['secure_url']
+            print("cv_upload", data['cv'])
 
+        # Handle national ID image upload
         if 'national_id_img' in request.FILES:
             national_id_upload = upload(request.FILES['national_id_img'])
             data['national_id_img'] = national_id_upload['secure_url']
 
-        print(data['cv'])
+        # Create or update serializer instance
         serializer = self.get_serializer(user, data=data, partial=True)
+        print('data', data)
+        # Validate serializer
         if not serializer.is_valid():
             print("🔴 Serializer Errors:", serializer.errors)
-        serializer.is_valid(raise_exception=True)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save the updated instance
+        job = serializer.save()  # This will save the instance
+        print("job", job.cv)
         self.perform_update(serializer)
 
+        # Debug: Print the updated data
+        print("🔵 serializer.data:", serializer.data)
+
         return Response(serializer.data)
+
 
 
 

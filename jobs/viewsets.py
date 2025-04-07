@@ -31,38 +31,62 @@ class JobsViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = JobFilter
     pagination_class = JobPagination
+    
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
     def create(self, request, *args, **kwargs):
         try:
-            print("validated_data", request.data)
-            validated_data = request.data
-            questions_data = validated_data.pop('questions', [])  # Extract questions
-            company = Company.objects.get(id=validated_data['company'])
-            validated_data['company'] = company
+          questions_data = request.data.pop('questions', [])
+          company = Company.objects.get(id=request.data['company'])
+          request.data['company'] = company
+          
+          for question_data in questions_data:
+              Question.objects.create(job=job, **question_data)
+          
+          serializer = self.get_serializer(data=request.data)
+          
+          if serializer.is_valid():
+            job_instance = serializer.save()
             
-            job = Job.objects.create(**validated_data)
-
-            for question_data in questions_data:
-                Question.objects.create(job=job, **question_data)  # Link each question to the job
-
             fastapi_data = {
-                "id": job.id,
-                "title": job.title,
-                "description": job.description,
-               
+                "id": job_instance.id,
+                "title": job_instance.title,
+                "description": job_instance.description,
+                "location": job_instance.location,
+                "status": job_instance.status,
+                "type_of_job": job_instance.type_of_job,
+                "experince": job_instance.experince,
+                "company": job_instance.company.id,
+                "company_name": job_instance.company.name,
+                "company_logo": self.get_serializer_context()['request'].build_absolute_uri(
+                    job_instance.company.img.url
+                ) if job_instance.company.img else "None",
             }
-            print("fastaopi data ",fastapi_data)
+
+            print("company_instance", job_instance.company)
+            print("fastapi_data", fastapi_data)
+            
             try:
                 response = requests.post(FASTAPI_URL, json=fastapi_data)
                 response.raise_for_status()  # Raise an exception for 4xx/5xx responses
                 
                 fastapi_response = response.json()
-                print("fastapi_response",fastapi_response)
+                print("fastapi_response", fastapi_response)
+                
                 return Response({"django_job": serializer.data, "fastapi_job": fastapi_response}, status=201)
+            
             except requests.exceptions.RequestException as e:
                 print("FastAPI request error:", e)
+            
             return JsonResponse({"django_job": self.get_serializer(job).data, "fastapi_job": 'failed'}, status=201)
+        
         except Exception as e:
             raise serializers.ValidationError(f"An error occurred while creating the job: {e}")
+
     # def create(self, request, *args, **kwargs):
 
     #     serializer = self.get_serializer(data=request.data)
@@ -112,17 +136,25 @@ class JobsViewSet(viewsets.ModelViewSet):
             Question.objects.create(job=job, **question_data)
 
         # Sync with FastAPI
-        fastapi_data = {
-          "id": job.id,
-          "title": job.title,
-          "description": job.description,
-        }
-        try:
-          fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
-          fastapi_response.raise_for_status()
-          return Response({"django_job": serializer.data, "fastapi_job": fastapi_response.json()}, status=200)
-        except requests.exceptions.RequestException as e:
-          JsonResponse({"django_job": self.get_serializer(job).data, "fastapi_job": 'failed'}, status=200)
+          fastapi_data = {
+            "id": updated_job.id,
+            "title": updated_job.title,
+            "description": updated_job.description,
+            "location": updated_job.location,
+            "status": updated_job.status,
+            "type_of_job": updated_job.type_of_job,
+            "experince": updated_job.experince, 
+            "company": updated_job.company.id,
+            "company_name": updated_job.company.name,
+            "company_logo": self.get_serializer_context()['request'].build_absolute_uri(
+                updated_job.company.img.url
+            ) if updated_job.company.img else None,
+          }
+          try:
+            fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
+            fastapi_response.raise_for_status()
+          except requests.exceptions.RequestException as e:
+            return Response({"error": f"Failed to sync update with FastAPI: {e}"}, status=500)
 
         return Response(serializer.data)
 

@@ -11,4 +11,4 @@ class Answer(models.Model):
     result = models.CharField(max_length=255, blank=True, null=True)  # e.g., Correct, Incorrect, Passed
 
     def __str__(self):
-        return f"{self.user_job.user.name} - {self.question.text[:30]}..."
+        return f"{self.application.user.name} - {self.question.text[:30]}..."
