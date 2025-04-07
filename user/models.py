@@ -81,10 +81,14 @@ class User(AbstractUser):
             )
         ],
     )
-    is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+
+    # OTP Verification Fields
+    otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code
+    verify_status = models.BooleanField(default=False)  # False until verified
+    is_active = models.BooleanField(default=False)  # False until verified
 
     #jobseeker fields
     dob = models.DateField(null=True, blank=True)
