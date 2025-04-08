@@ -12,6 +12,7 @@ from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 from .filters import JobseekerFilter
+from rest_framework import status
 
 
 User = get_user_model()
@@ -58,46 +59,63 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         return self.request.user
 
     def partial_update(self, request, *args, **kwargs):
-        # Debug: Check request.FILES
+            # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
-        data = request.data.copy()
+        data = request.data.copy() if not isinstance(request.data, dict) else request.data
 
-        # Handle image uploads
-        if 'img' in request.FILES:
-            image_upload = upload(request.FILES['img'])
-            data['img'] = image_upload['secure_url']
+        try:
+            # Handle image uploads
+            if 'img' in data:#request.FILES:
+               # image_upload = upload(request.FILES['img'])
+                #data['img'] = image_upload['secure_url']
+                data['img']=data['img']
+                
+            # # Handle CV upload
+            # if 'cv' in request.FILES:
+            #     print(request.FILES['cv'])
+            #     cv_upload = upload(request.FILES['cv'], resource_type="raw")
+            #     data['cv'] = cv_upload['secure_url']
+            #     print("cv_upload", data['cv'])
+            # elif 'cv' in data and data['cv'] == '':  # Check for empty string
+            #     data['cv'] = None    
+                
+                
+              # Handle CV upload
+            if 'cv' in request.FILES:
+               print(request.FILES['cv'])
+               cv_upload = upload(request.FILES['cv'], resource_type="raw")
+               data['cv'] = cv_upload['secure_url']
+            elif 'cv' in data and data['cv'] == '':  # Check for empty string
+                data['cv'] = None    
+    
 
-        # Handle CV upload
-        if 'cv' in request.FILES:
-            print(request.FILES['cv'])
-            cv_upload = upload(request.FILES['cv'], resource_type="raw")
-            data['cv'] = cv_upload['secure_url']
-            print("cv_upload", data['cv'])
+            # Handle national ID image upload
+            if 'national_id_img' in data:# request.FILES:
+                    # national_id_upload = upload(request.FILES['national_id_img'])
+                    # data['national_id_img'] = national_id_upload['secure_url']
+                    data['national_id_img'] = data['national_id_img']
+             # Create or update serializer instance
+            serializer = self.get_serializer(user, data=data, partial=True)
+            print('data', data)
+            # Validate serializer
+            if not serializer.is_valid():
+                print("🔴 Serializer Errors:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Handle national ID image upload
-        if 'national_id_img' in request.FILES:
-            national_id_upload = upload(request.FILES['national_id_img'])
-            data['national_id_img'] = national_id_upload['secure_url']
+            # Save the updated instance
+            job = serializer.save()  # This will save the instance
+            print("job", job.cv)
+            self.perform_update(serializer)
 
-        # Create or update serializer instance
-        serializer = self.get_serializer(user, data=data, partial=True)
-        print('data', data)
-        # Validate serializer
-        if not serializer.is_valid():
-            print("🔴 Serializer Errors:", serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Debug: Print the updated data
+            print("🔵 serializer.data:", serializer.data)
 
-        # Save the updated instance
-        job = serializer.save()  # This will save the instance
-        print("job", job.cv)
-        self.perform_update(serializer)
-
-        # Debug: Print the updated data
-        print("🔵 serializer.data:", serializer.data)
-
-        return Response(serializer.data)
-
+            return Response(serializer.data)
+    
+        except Exception as e:
+          print(f"🔴 Error during update: {str(e)}")
+          return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -114,7 +132,8 @@ class CompanyViewSet(viewsets.ModelViewSet):
         # return super().partial_update(request, *args, **kwargs)
         user = self.get_object()
         data = request.data.copy()
-
+       
+       
         if 'img' in request.FILES:
             image_upload = upload(request.FILES['img'])
             data['img'] = image_upload['secure_url']
