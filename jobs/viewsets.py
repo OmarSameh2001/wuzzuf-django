@@ -136,7 +136,7 @@ class JobsViewSet(viewsets.ModelViewSet):
             Question.objects.create(job=job, **question_data)
 
         # Sync with FastAPI
-          fastapi_data = {
+        fastapi_data = {
             "id": updated_job.id,
             "title": updated_job.title,
             "description": updated_job.description,
@@ -150,10 +150,10 @@ class JobsViewSet(viewsets.ModelViewSet):
                 updated_job.company.img.url
             ) if updated_job.company.img else None,
           }
-          try:
+        try:
             fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
             fastapi_response.raise_for_status()
-          except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:
             return Response({"error": f"Failed to sync update with FastAPI: {e}"}, status=500)
 
         return Response(serializer.data)

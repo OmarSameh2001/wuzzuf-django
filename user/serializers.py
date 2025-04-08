@@ -3,6 +3,9 @@ from django.utils.translation import gettext as _
 from rest_framework import serializers
 from .models import Company, Jobseeker
 from cloudinary.uploader import upload
+from django.utils.crypto import get_random_string
+from django.core.mail import send_mail
+from django.conf import settings
 
 User = get_user_model()
 
@@ -16,6 +19,21 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user_type = validated_data.pop("user_type", "jobseeker")  # Default to jobseeker
         user = User.objects.create_user(**validated_data, user_type=user_type)
+
+        #generate 6 digit otp
+        user.otp_digit = get_random_string(length=6, allowed_chars='0123456789')
+        user.is_active = False  # Don't allow login until OTP is verified
+        user.save()
+
+        #send otp to user email
+        send_mail(
+            'Your OTP Code',
+            f'Your OTP Code is {user.otp_digit}',
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+
         return user
     
     def update(self, instance, validated_data):
@@ -120,7 +138,9 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             return instance
 
 
-
+class OTPVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6, min_length=6) 
 
 class AuthTokenSerializer(serializers.Serializer):
     email = serializers.EmailField()

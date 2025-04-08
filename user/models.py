@@ -82,10 +82,14 @@ class User(AbstractUser):
             )
         ],
     )
-    is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+
+    # OTP Verification Fields
+    otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code
+    verify_status = models.BooleanField(default=False)  # False until verified
+    is_active = models.BooleanField(default=False)  # False until verified
 
     #jobseeker fields
     about=models.TextField(null=True, blank=True)
@@ -93,7 +97,7 @@ class User(AbstractUser):
     education = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
     cv = CloudinaryField('cv', resource_type='raw', null=True, blank=True)
-    # keywords = models.TextField(null=True, blank=True)
+    keywords = models.TextField(null=True, blank=True)
     national_id = models.CharField(
         max_length=14,
         unique=True,

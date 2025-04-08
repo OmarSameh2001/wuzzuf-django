@@ -1,17 +1,23 @@
 from django.contrib.auth import get_user_model
-from rest_framework import generics, viewsets, filters, serializers
+from rest_framework import generics, viewsets, filters, status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.authtoken.views import ObtainAuthToken
-from .serializers import UserSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-from .models import Company, Jobseeker
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 from .filters import JobseekerFilter
+from .utils import send_otp_email
+from .serializers import UserSerializer, OTPVerificationSerializer,  JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
+from .models import Company, Jobseeker, User
+from rest_framework.decorators import api_view
+from rest_framework.views import APIView
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+import smtplib
 
 
 User = get_user_model()
@@ -21,19 +27,24 @@ class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def create(self, request, *args, **kwargs):
-        print(request.data)
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            print("Serializer Errors:", serializer.errors)  # Print validation errors
-        serializer.is_valid(raise_exception=True)
+    def perform_create(self, serializer):
+        user = serializer.save()  # Create user instance
+        otp = self.send_otp(user.email)  # Send OTP after registration
 
-        user = serializer.save()
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({
-            "token": token.key,
-            "user_type": user.user_type
-        })
+        if otp:  # Ensure OTP is valid before saving
+            user.otp_digit = otp
+            user.save()
+        else:
+            print(f"Failed to generate OTP for {user.email}")
+
+    def send_otp(self, email):        
+        otp = send_otp_email(email)  
+        if otp is None:
+            print(f"OTP sending failed for {email}")  # Debugging
+        return otp  # Return OTP so it can be saved
+        # user = User.objects.get(email=email)
+        # user.otp_digit = otp
+        # user.save()
 
 
 class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -157,26 +168,62 @@ class JobseekerListView(generics.ListAPIView):
     filterset_class = JobseekerFilter
 
 
+class VerifyOTPView(APIView):
+    # permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=OTPVerificationSerializer,  # Automatically pulls from serializer
+        responses={
+            status.HTTP_200_OK: openapi.Response('OTP verified successfully!'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('Invalid OTP'),
+            status.HTTP_404_NOT_FOUND: openapi.Response('User not found')
+        }
+    )
+    def post(self, request):
+        serializer = OTPVerificationSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = serializer.validated_data['otp']
+            print(email, otp)  # Check if this prints now
+
+            try:
+                user = User.objects.get(email=email)
+                if user.otp_digit == otp:
+                    user.verify_status = True
+                    user.is_active = True  # Activate user account
+                    user.otp_digit = None  # Clear OTP after successful verification
+                    user.save()
+                    return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+            except User.DoesNotExist:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Debugging part - print the serializer errors
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomAuthToken(ObtainAuthToken):
     serializer_class = AuthTokenSerializer
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={"request": request})
-        if not serializer.is_valid():
-            print("Serializer Errors:", serializer.errors) 
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
+
+        if not user.verify_status:
+            return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
+        
         token, _ = Token.objects.get_or_create(user=user)
 
         user_data = {
-            "id": user.id,
             "token": token.key,
+            "id": user.id,
             "user_type": user.user_type,
             "email": user.email,
             "name": user.name,
-            "img": str(user.img) if user.img else None,
+            "img": user.img,
             "location": user.location,
             "phone_number": user.phone_number,
         }
@@ -187,7 +234,8 @@ class CustomAuthToken(ObtainAuthToken):
                 "dob": user.dob,
                 "education": user.education,
                 "experience": user.experience,
-                "cv": str(user.cv) if user.cv else None,
+                "cv": user.cv,
+                "keywords": user.keywords,
                 "skills": user.skills,
             })
 
