@@ -20,20 +20,6 @@ class UserSerializer(serializers.ModelSerializer):
         user_type = validated_data.pop("user_type", "jobseeker")  # Default to jobseeker
         user = User.objects.create_user(**validated_data, user_type=user_type)
 
-        #generate 6 digit otp
-        user.otp_digit = get_random_string(length=6, allowed_chars='0123456789')
-        user.is_active = False  # Don't allow login until OTP is verified
-        user.save()
-
-        #send otp to user email
-        send_mail(
-            'Your OTP Code',
-            f'Your OTP Code is {user.otp_digit}',
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
-
         return user
     
     def update(self, instance, validated_data):

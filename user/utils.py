@@ -1,9 +1,5 @@
 from django.core.mail import send_mail
-from django.conf import settings
 import random
-import logging
-
-logger = logging.getLogger(__name__)
 
 def send_otp_email(email):
     try:
@@ -17,21 +13,18 @@ def send_otp_email(email):
         result = send_mail(
             subject,
             message,
-            settings.DEFAULT_FROM_EMAIL  # Sender's email address
-            [email],              # Recipient's email address
+            'hebagassem911@gmail.com',  # Sender's email address
+            [email],  # Recipient's email address
             fail_silently=False,
         )
-
-        # Log OTP value for debugging (only for development)
-        logger.debug(f"Generated OTP: {otp}")
 
         if result == 1:
             print("Email successfully sent")
         else:
             print("Email sending failed")
 
-        return otp if result == 1 else None  # Ensure OTP is only returned when email is sent
+        return otp if result == 1 else None  # Return OTP only if email is sent successfully
     
     except Exception as e:
         print(f"Failed to send OTP email to {email}: {e}")  # Debugging
-        return None 
+        return None

@@ -28,12 +28,22 @@ class UserCreateView(generics.CreateAPIView):
     serializer_class = UserSerializer
 
     def perform_create(self, serializer):
-        user = serializer.save()  # Create user instance
-        otp = self.send_otp(user.email)  # Send OTP after registration
+        # Save the user first
+        user = serializer.save()
+
+        # Now send OTP email and update user with OTP
+        otp = self.send_otp(user.email)
+
+        if user.otp_digit == otp:
+            print(f"Stored OTP: {user.otp_digit}, Entered OTP: {otp}")
+
 
         if otp:  # Ensure OTP is valid before saving
             user.otp_digit = otp
             user.save()
+            print(f"Saved OTP for {user.email}: {user.otp_digit}")
+
+
         else:
             print(f"Failed to generate OTP for {user.email}")
 
@@ -191,7 +201,7 @@ class VerifyOTPView(APIView):
                 if user.otp_digit == otp:
                     user.verify_status = True
                     user.is_active = True  # Activate user account
-                    user.otp_digit = None  # Clear OTP after successful verification
+                    # user.otp_digit = None  # Clear OTP after successful verification
                     user.save()
                     return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
                 else:
