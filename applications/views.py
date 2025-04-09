@@ -39,6 +39,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ApplicationFilter
     pagination_class = CustomPagination
+    ordering = ['-ats_res']
     
     STATUS_MAP = {
         2: "Application Accepted",
@@ -53,6 +54,19 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         5: "We’re sorry to inform you that you were not selected after the HR Interview.",
         6: "Unfortunately, we will not be proceeding with your offer interview."
     }
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Get the ordering query parameter (if any)
+        ordering = self.request.query_params.get('ordering', None)
+
+        if ordering:
+            queryset = queryset.order_by(ordering)
+        else:
+            queryset = queryset.order_by(*self.ordering)
+
+        return queryset
 
     def perform_create(self, serializer):
         print("serializer")

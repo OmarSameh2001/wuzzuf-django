@@ -242,7 +242,7 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
-        if not user.verify_status:
+        if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
             return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
         
         token, _ = Token.objects.get_or_create(user=user)
