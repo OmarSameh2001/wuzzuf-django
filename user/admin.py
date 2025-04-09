@@ -63,13 +63,13 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Jobseeker)
 class JobseekerAdmin(admin.ModelAdmin):
-    list_display = ["id", "email", "name", "dob", "education", "experience", "cv", "img"]
+    list_display = ["id", "email", "name", "dob", "education", "experience", "skills","cv", "img" ]
     fieldsets = (
         (
             None,
             {
                 "fields": (
-                    "email", "username", "password", "name", 'about', "dob", "phone_number", "img"
+                    "email", "username", "password", "name", 'about', "dob", "phone_number", "img", "skills"
                 )
             },
         ),

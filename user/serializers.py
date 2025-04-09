@@ -34,11 +34,19 @@ class UserSerializer(serializers.ModelSerializer):
 class JobseekerProfileSerializer(serializers.ModelSerializer):
     id = serializers.CharField(read_only=True)
     cv = serializers.CharField(allow_blank=True, required=False)
-    img = serializers.CharField(allow_blank=True, required=False)
-    national_id_img = serializers.CharField(allow_blank=True, required=False)
-
+    img = serializers.CharField( allow_null=True ,required=False)
+    national_id_img = serializers.CharField( allow_null=True ,required=False)
+    
+    #for file upload only to be write_only
+    cv_file = serializers.FileField(
+        write_only=True,
+        required=False,
+        allow_null=True
+    ) 
+     
+     
     class Meta:
-        model = Jobseeker
+        model = Jobseeker 
         fields = [
             'id',
             'email', 
@@ -54,30 +62,91 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'location', 
             'phone_number',
             'skills',
-            'user_type'
+            'user_type',
+            'cv_file'
         ]
         read_only_fields = ['email']
 
 
+    # def update(self, instance, validated_data):
+    #         # Update the fields for the jobseeker model
+    #       request = self.context.get('request')
+    #       if request and hasattr(request, "FILES"):
+    #         if 'img' in request.FILES:
+    #             image_upload = upload(request.FILES['img'])
+    #             validated_data['img'] = image_upload['secure_url']
+
+    #         if 'cv' in request.FILES:
+    #             cv_upload = upload(request.FILES['cv'], resource_type="raw")
+    #             validated_data['cv'] = cv_upload['secure_url']
+
+    #         if 'national_id_img' in request.FILES:
+    #             national_id_upload = upload(request.FILES['national_id_img'])
+    #             validated_data['national_id_img'] = national_id_upload['secure_url']
+
+    #       return super().update(instance, validated_data)
+    
+    
+    
+    
+    # def update(self, instance, validated_data):
+    #     # Handle image fields (accept full URL directly)
+    #         instance.img = validated_data.get('img', instance.img)
+    #         instance.national_id_img = validated_data.get('national_id_img', instance.national_id_img)
+
+    #         # Handle CV upload (if sent as a file)
+    #         request = self.context.get('request')
+    #         if request and hasattr(request, "FILES") and 'cv' in request.FILES:
+    #             cv_upload = upload(request.FILES['cv'], resource_type="raw")
+    #             validated_data['cv'] = cv_upload['secure_url']
+
+    #         # Update other fields
+    #         instance.name = validated_data.get('name', instance.name)
+    #         instance.about = validated_data.get('about', instance.about)
+    #         instance.dob = validated_data.get('dob', instance.dob)
+    #         instance.education = validated_data.get('education', instance.education)
+    #         instance.experience = validated_data.get('experience', instance.experience)
+    #         instance.cv = validated_data.get('cv', instance.cv)  # Use the uploaded URL if available
+    #         instance.national_id = validated_data.get('national_id', instance.national_id)
+    #         instance.location = validated_data.get('location', instance.location)
+    #         instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+    #         instance.skills = validated_data.get('skills', instance.skills)
+
+    #         # Save the updated instance
+    #         instance.save()
+    #         return instance
+    
+    
+    
+    
+    
     def update(self, instance, validated_data):
-            # Update the fields for the jobseeker model
-        #   print("validated_data", validated_data)
-          request = self.context.get('request')
-          if request and hasattr(request, "FILES"):
-            if 'img' in request.FILES:
-                image_upload = upload(request.FILES['img'])
-                validated_data['img'] = image_upload['secure_url']
-
-            if 'cv' in request.FILES:
-                cv_upload = upload(request.FILES['cv'], resource_type="raw")
+        # Handle CV file upload separately
+        cv_file = validated_data.pop('cv_file', None)
+        
+        if cv_file is not None:
+            if cv_file:  # New file uploaded
+                cv_upload = upload(cv_file, resource_type="raw")
                 validated_data['cv'] = cv_upload['secure_url']
+            else:  # Explicit None means delete CV
+                validated_data['cv'] = None
+        
+        # Handle image fields (can accept either file or URL)
+        for image_field in ['img', 'national_id_img']:
+            if image_field in validated_data:
+                field_value = validated_data[image_field]
+                if hasattr(field_value, 'file'):  # It's a file upload
+                    image_upload = upload(field_value)
+                    validated_data[image_field] = image_upload['secure_url']
+                elif field_value == '':  # Empty string means clear the field
+                    validated_data[image_field] = None
 
-            if 'national_id_img' in request.FILES:
-                national_id_upload = upload(request.FILES['national_id_img'])
-                validated_data['national_id_img'] = national_id_upload['secure_url']
+        # Update all other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
-          return super().update(instance, validated_data)
-
+        instance.save()
+        return instance
 class CompanyProfileSerializer(serializers.ModelSerializer):
     logo=serializers.ImageField(required=False)
     class Meta:
