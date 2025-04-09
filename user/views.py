@@ -66,10 +66,10 @@ class JobseekerViewSet(viewsets.ModelViewSet):
 
         try:
             # Handle image uploads
-            if 'img' in data:#request.FILES:
-               # image_upload = upload(request.FILES['img'])
-                #data['img'] = image_upload['secure_url']
-                data['img']=data['img']
+            if 'img' in request.FILES:
+                image_upload = upload(request.FILES['img'])
+                data['img'] = image_upload['secure_url']
+                # data['img']=data['img']
                 
             # # Handle CV upload
             # if 'cv' in request.FILES:
@@ -91,10 +91,10 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     
 
             # Handle national ID image upload
-            if 'national_id_img' in data:# request.FILES:
-                    # national_id_upload = upload(request.FILES['national_id_img'])
-                    # data['national_id_img'] = national_id_upload['secure_url']
-                    data['national_id_img'] = data['national_id_img']
+            if 'national_id_img' in request.FILES:
+                    national_id_upload = upload(request.FILES['national_id_img'])
+                    data['national_id_img'] = national_id_upload['secure_url']
+                    # data['national_id_img'] = data['national_id_img']
              # Create or update serializer instance
             serializer = self.get_serializer(user, data=data, partial=True)
             print('data', data)
@@ -115,6 +115,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     
         except Exception as e:
           print(f"🔴 Error during update: {str(e)}")
+        #   print(serializer)
           return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
