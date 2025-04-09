@@ -11,13 +11,14 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 from .filters import JobseekerFilter
 from .utils import send_otp_email
-from .serializers import UserSerializer, OTPVerificationSerializer,  JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
-from .models import Company, Jobseeker, User
+from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
+from .models import Company, Jobseeker
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import smtplib
+from django.contrib.auth.tokens import default_token_generator
 
 
 User = get_user_model()
@@ -213,6 +214,29 @@ class VerifyOTPView(APIView):
         # Debugging part - print the serializer errors
         print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class PasswordResetRequestView(APIView):
+    """API View to send password reset email"""
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.send_password_reset_email()
+            return Response({"message": "Password reset email sent."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    """API View to reset password"""
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CustomAuthToken(ObtainAuthToken):
     serializer_class = AuthTokenSerializer
