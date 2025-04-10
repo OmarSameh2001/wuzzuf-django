@@ -238,6 +238,18 @@ class PasswordResetConfirmView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class GetPasswordResetTokenView(APIView):
+    """Endpoint to get the token for the user based on their email"""
+
+    def get(self, request, email):  # <-- Get email from URL
+        try:
+            user = User.objects.get(email=email)
+            token = default_token_generator.make_token(user)
+            return Response({'token': token}, status=200)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=400)
+
+
 class CustomAuthToken(ObtainAuthToken):
     serializer_class = AuthTokenSerializer
 

@@ -146,20 +146,16 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         token = default_token_generator.make_token(user)
 
         # Generate a password reset link
-        reset_url = "http://127.0.0.1:8000/user/password-reset/"  # Adjust frontend URL
+        reset_url = f"http://localhost:5173/reset-password/{user.email}"
 
          # Email content
         email_body = (
             "You requested a password reset.\n\n"
-            "Please make a POST request to the following API endpoint:\n\n"
+            "Please visit the following page to reset your password:\n\n"
             f"{reset_url}\n\n"
-            "With the following JSON body:\n\n"
-            "{\n"
-            f'    "email": "{email}",\n'
-            f'    "token": "{token}",\n'
-            '    "new_password": "your_new_password"\n'
-            "}"
+            "You will need to provide the token sent to you, along with your new password."
         )
+
 
         # Send email
         send_mail(

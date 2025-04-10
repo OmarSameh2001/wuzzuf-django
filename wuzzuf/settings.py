@@ -65,11 +65,15 @@ MIDDLEWARE = [
       "django.middleware.common.CommonMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
   
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",  
 ]
 
 ROOT_URLCONF = "wuzzuf.urls"
@@ -151,7 +155,7 @@ CLOUDINARY_STORAGE = {
 }   
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage',
 
-AUTH_USER_MODEL = 'users.User'
+AUTH_USER_MODEL = 'user.User'
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -167,11 +171,13 @@ REST_FRAMEWORK = {
 
 
 CORS_ALLOW_ALL_ORIGINS = True 
+
+
 load_dotenv()
 
 CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')
 
-AUTH_USER_MODEL = "user.User"  # Point to your User model
+# AUTH_USER_MODEL = "user.User"  # Point to your User model
 # AUTHENTICATION_BACKENDS = [
 #     "accounts.backends.DualAuthenticationBackend",
 #     "django.contrib.auth.backends.ModelBackend",
