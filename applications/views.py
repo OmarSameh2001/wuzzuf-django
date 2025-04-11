@@ -237,6 +237,89 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     #     return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
  
  
+ 
+    # Add this to your ApplicationViewSet in views.py
+    @action(detail=False, methods=['patch'])
+    def bulk_update_status(self, request):
+        """Bulk update status for multiple applications"""
+        try:
+            application_ids = request.data.get('application_ids', [])
+            new_status = request.data.get('status')
+            fail = request.data.get('fail', False)
+            
+            if not application_ids:
+                return Response({"error": "No applications selected"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if new_status is None:
+                return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            new_status = int(new_status)
+            if isinstance(fail, str):
+                fail = fail.lower() == "true"
+
+            # Get all applications at once
+            applications = Application.objects.filter(id__in=application_ids)
+            if not applications.exists():
+                return Response({"error": "No valid applications found"}, status=status.HTTP_404_NOT_FOUND)
+                
+            # Get company info from first application (assuming all are for same company)
+            company = applications.first().job.company
+            job_title = applications.first().job.title
+            
+            # Bulk update
+            updated_count = applications.update(status=new_status, fail=fail)
+            
+            # Send emails
+            if not fail:
+                status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
+                subject = f"Application Update for {job_title} at {company.username}"
+                message_template = (
+                    f"Dear {{username}},\n\n"
+                    f"Your application for {job_title} at {company.username} "
+                    f"has moved to the next stage: {status_text}.\n\n"
+                    f"Best regards,\n{company.username} Team"
+                )
+            else:
+                subject = f"Application Update for {job_title} at {company.username}"
+                message_template = (
+                    f"Dear {{username}},\n\n"
+                    f"We regret to inform you that your application for {job_title} at {company.username} "
+                    "has not passed the current stage.\n\n"
+                    f"Best regards,\n{company.username} Team"
+                )
+                
+            sender = f'"{company.username} HR Team" <{company.email}>'
+            email_errors = []
+            
+            for app in applications:
+                try:
+                    message = message_template.format(username=app.user.username)
+                    send_mail(
+                        subject,
+                        message,
+                        sender,
+                        [app.user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    email_errors.append(f"Failed to send email to {app.user.email}: {str(e)}")
+                    logger.error(f"Email error for {app.user.email}: {str(e)}")
+            
+            response_data = {
+                "message": f"Updated {updated_count} applications",
+                "status": new_status,
+                "failed": fail,
+                "email_errors": email_errors if email_errors else None
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Bulk update error: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+ 
+ 
 #    In your views.py
     @action(detail=True, methods=["patch"])
     def update_status(self, request, pk=None):
