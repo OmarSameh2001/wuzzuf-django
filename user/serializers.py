@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'username', 'password', 'name', 'user_type']
 
-        extra_kwargs = {'password': {'write_only': True, 'min_length': 5}}
+        extra_kwargs = {'password': {'write_only': True, 'min_length': 8}}
     
     def create(self, validated_data):
         user_type = validated_data.pop("user_type", "jobseeker")  # Default to jobseeker
