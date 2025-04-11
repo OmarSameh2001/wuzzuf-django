@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserCreateView, UserRetrieveUpdateView,
     JobseekerViewSet, CompanyViewSet, CustomAuthToken, JobseekerListView,VerifyOTPView, GetPasswordResetTokenView
-    ,PasswordResetRequestView, PasswordResetConfirmView
+    ,PasswordResetRequestView, PasswordResetConfirmView, check_email_exists, check_username_exists
 )
 
 router = DefaultRouter()
@@ -19,6 +19,8 @@ urlpatterns = [
     path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path('password-reset/get-token/<str:email>/', GetPasswordResetTokenView.as_view(), name='get-reset-token'),   
     path('jobseekers/all/', JobseekerListView.as_view(), name='jobseeker-list'),
+    path('check-email/', check_email_exists, name='check_email_exists'),
+    path('check-username/', check_username_exists, name='check_username_exists'),
     path('token/', CustomAuthToken.as_view(), name='token'),
     path('', include(router.urls)),
 ]
