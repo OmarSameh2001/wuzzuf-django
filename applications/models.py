@@ -16,7 +16,7 @@ class Application(models.Model):
     user = models.ForeignKey(Jobseeker, on_delete=models.CASCADE)
     job = models.ForeignKey(Job, on_delete=models.CASCADE)
     status = models.CharField(max_length=50, default='1')
-    ats_res = models.TextField(blank=True, null=True)
+    ats_res = models.FloatField(blank=True, null=True)
     screening_res = models.TextField(blank=True, null=True)
     assessment_link = models.CharField(max_length=255, blank=True, null=True)
     assessment_res = models.TextField(blank=True, null=True)

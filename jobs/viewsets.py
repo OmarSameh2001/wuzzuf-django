@@ -130,11 +130,13 @@ class JobsViewSet(viewsets.ModelViewSet):
         # print("questions data", questions_data)
         # Delete existing questions and replace them with new ones
         Question.objects.filter(job=job).delete()
-        for question_data in questions_data:
-            print("question data", question_data, job)
-            question_data.pop('job', None)
-            Question.objects.create(job=job, **question_data)
+        if questions_data:
+            for question_data in questions_data:
+                print("question data", question_data, job)
+                question_data.pop('job', None)
+                Question.objects.create(job=job, **question_data)
 
+        updated_job = serializer.save()
         # Sync with FastAPI
         fastapi_data = {
             "id": updated_job.id,

@@ -64,12 +64,12 @@ class JobsSerializer(serializers.ModelSerializer):
         instance.save()
 
         print("instance", validated_data)
-        print("questions data", questions_data)
+        # print("questions data", questions_data)
         # Delete existing questions and replace them with new ones
-        Question.objects.filter(job=instance).delete()
-        for question_data in questions_data:
-            print("question data", question_data)
-            Question.objects.create(job=instance, **question_data)
+        # Question.objects.filter(job=instance).delete()
+        # for question_data in questions_data:
+        #     print("question data", question_data)
+        #     Question.objects.create(job=instance, **question_data)
 
         return instance
     
