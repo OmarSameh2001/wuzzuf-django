@@ -272,16 +272,23 @@ class GetPasswordResetTokenView(APIView):
 @api_view(['POST'])
 def check_email_exists(request):
     email = request.data.get("email")
+    if not email:
+        return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
     if User.objects.filter(email=email).exists():
-        return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
-    return Response({"message": "Email is available"}, status=status.HTTP_200_OK)
+        return Response({"exists": True, "error": "Email already exists"}, status=status.HTTP_200_OK)
+    return Response({"exists": False, "message": "Email is available"}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def check_username_exists(request):
     username = request.data.get("username")
+    if not username:
+        return Response({"error": "Username is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
     if User.objects.filter(username=username).exists():
-        return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
-    return Response({"message": "Username is available"}, status=status.HTTP_200_OK)
+        return Response({"exists": True, "error": "Username already exists"}, status=status.HTTP_200_OK)
+    return Response({"exists": False, "message": "Username is available"}, status=status.HTTP_200_OK)
+
 
 
 class CustomAuthToken(ObtainAuthToken):
