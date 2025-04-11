@@ -41,16 +41,26 @@ class JobsViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
           questions_data = request.data.pop('questions', [])
-          company = Company.objects.get(id=request.data['company'])
-          request.data['company'] = company
-          
-          for question_data in questions_data:
-              Question.objects.create(job=job, **question_data)
+          #da kan error check eno no problems in other functionalities due to this
+          #####################################################################
+        #   company = Company.objects.get(id=request.data['company'])
+        #   request.data['company'] = company
+        
+        #   print (questions_data)
+        #   print("request.data", request.data)
+        #   print("company", company)
           
           serializer = self.get_serializer(data=request.data)
-          
+          if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        #   print ("serializer", serializer)
           if serializer.is_valid():
             job_instance = serializer.save()
+            print ("job_instanceeeeeeeeeeeeeeeeeeeeeeeeeeeeee", job_instance)
+            if questions_data: 
+               for question_data in questions_data:
+                 Question.objects.create(job=job_instance, **question_data)
+                
             
             fastapi_data = {
                 "id": job_instance.id,

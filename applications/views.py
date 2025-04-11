@@ -108,88 +108,314 @@ class ApplicationViewSet(viewsets.ModelViewSet):
           
 
 
+    # @action(detail=True, methods=["patch"])
+    # def update_status(self, request, pk=None):
+    #     """Updates application status and sends an email based on success/failure."""
+    #     print(f"Incoming request data: {request.data}")  # Debugging
+        
+    #     try:
+    #         application = Application.objects.get(pk=pk)
+    #         new_status = request.data.get("status")
+    #         fail = request.data.get("fail", False)
+
+    #         # Ensure status is valid
+    #         if new_status is None:
+    #             return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    #         new_status = int(new_status)  # Convert status to integer
+    #         if isinstance(fail, str):
+    #             fail = fail.lower() == "true"  # Convert fail flag to boolean
+
+    #         # Update application
+    #         application.status = new_status
+    #         application.fail = fail
+    #         application.save()
+
+    #         # Email content
+    #         if fail:
+    #             subject = "Application Update: Rejection"
+    #             message = (
+    #                 f"Dear {application.user.username},\n\n"
+    #                 "We regret to inform you that your application has been rejected.\n\n"
+    #                 "Best regards,\nCompany Team"
+    #             )
+    #         else:
+    #             subject = f"Application Update: {self.STATUS_MAP.get(new_status, 'Status Updated')}"
+    #             message = (
+    #                 f"Dear {application.user.username},\n\n"
+    #                 f"Your application status has been updated to: {self.STATUS_MAP.get(new_status, 'Updated')}.\n\n"
+    #                 "Best regards,\nCompany Team"
+    #             )
+
+    #         # Attempt to send email
+    #         try:
+    #             send_mail(
+    #                 subject,
+    #                 message,
+    #                 "aishaamr63@gmail.com",  # Replace with actual sender email
+    #                 [application.user.email],
+    #                 fail_silently=False,
+    #             )
+    #         except Exception as e:
+    #             logger.error(f"Failed to send email to {application.user.email}: {e}")
+    #             return Response(
+    #                 {
+    #                     "message": "Application status updated, but email failed to send",
+    #                     "status": application.status,
+    #                     "failed": fail,
+    #                 },
+    #                 status=status.HTTP_200_OK
+    #             )
+
+    #         # If everything is successful, return success response
+    #         return Response(
+    #             {
+    #                 "message": "Application status updated successfully",
+    #                 "status": application.status,
+    #                 "failed": fail,
+    #             },
+    #             status=status.HTTP_200_OK
+    #         )
+
+    #     except Application.DoesNotExist:
+    #         return Response({"error": "Application not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+    #     except (ValueError, TypeError):
+    #         return Response({"error": "Invalid status value"}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     except Exception as e:
+    #         logger.error(f"Unexpected error: {e}")
+    #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # @action(detail=True, methods=["patch"])
+    # def schedule_interview(self, request, pk=None):
+    #     application = self.get_object()
+    #     interview_time_str = request.data.get("interview_time")
+    #     interview_link = request.data.get("interview_link")
+    #     interview_phase = request.data.get("phase")
+
+    #     if not interview_time_str or not interview_link or not isinstance(interview_phase, int):
+    #         return Response({"error": "Missing or invalid interview details"}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     try:
+    #         interview_time = make_aware(datetime.datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
+    #     except ValueError:
+    #         return Response({"error": "Invalid date format, expected YYYY-MM-DD HH:MM"}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     interview_types = {
+    #         3: "Technical Assessment",
+    #         4: "Technical Interview",
+    #         5: "HR Interview",
+    #         6: "Offer Interview"
+    #     }
+
+    #     if interview_phase not in interview_types:
+    #         return Response({"error": "Invalid interview phase"}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     if interview_phase == 3:
+    #         application.interview_time = interview_time
+    #         application.interview_link = interview_link
+    #     elif interview_phase == 4:
+    #         application.hr_time = interview_time
+    #         application.hr_link = interview_link
+    #     elif interview_phase == 5:
+    #         application.offer_time = interview_time
+    #         application.offer_link = interview_link
+
+    #     application.save()
+
+    #     subject = f"Your {interview_types[interview_phase]} is Scheduled"
+    #     message = (f"Dear {application.user.username},\n\n"
+    #                f"Your {interview_types[interview_phase]} is scheduled for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
+    #                f"Meeting Link: {interview_link}\n\n"
+    #                f"Best regards,\nCompany Team")
+
+    #     try:
+    #         send_mail(
+    #             subject,
+    #             message,
+    #             "aishaamr63@gmail.com",
+    #             [application.user.email],
+    #             fail_silently=False,
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"Failed to send interview email to {application.user.email}: {e}")
+    #         print(f"Failed to send interview email to {application.user.email}: {e}")
+    #         # return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    #     return Response({"message": f"{interview_types[interview_phase]} scheduled successfully"}, status=status.HTTP_200_OK)
+    # @action(methods=["patch"], detail=True)
+    # def set_assessment_link(self, request, pk=None):
+    #     """Updates application with new assessment link"""
+    #     application = self.get_object()
+    #     assessment_link = request.data.get("assessment_link")
+    #     if assessment_link is None:
+    #         return Response({"error": "Assessment link is required"}, status=status.HTTP_400_BAD_REQUEST)
+    #     application.assessment_link = assessment_link
+    #     application.save()
+    #     return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
+ 
+ 
+ 
+    # Add this to your ApplicationViewSet in views.py
+    @action(detail=False, methods=['patch'])
+    def bulk_update_status(self, request):
+        """Bulk update status for multiple applications"""
+        try:
+            application_ids = request.data.get('application_ids', [])
+            new_status = request.data.get('status')
+            fail = request.data.get('fail', False)
+            
+            if not application_ids:
+                return Response({"error": "No applications selected"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if new_status is None:
+                return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            new_status = int(new_status)
+            if isinstance(fail, str):
+                fail = fail.lower() == "true"
+
+            # Get all applications at once
+            applications = Application.objects.filter(id__in=application_ids)
+            if not applications.exists():
+                return Response({"error": "No valid applications found"}, status=status.HTTP_404_NOT_FOUND)
+                
+            # Get company info from first application (assuming all are for same company)
+            company = applications.first().job.company
+            job_title = applications.first().job.title
+            
+            # Bulk update
+            updated_count = applications.update(status=new_status, fail=fail)
+            
+            # Send emails
+            if not fail:
+                status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
+                subject = f"Application Update for {job_title} at {company.username}"
+                message_template = (
+                    f"Dear {{username}},\n\n"
+                    f"Your application for {job_title} at {company.username} "
+                    f"has moved to the next stage: {status_text}.\n\n"
+                    f"Best regards,\n{company.username} Team"
+                )
+            else:
+                subject = f"Application Update for {job_title} at {company.username}"
+                message_template = (
+                    f"Dear {{username}},\n\n"
+                    f"We regret to inform you that your application for {job_title} at {company.username} "
+                    "has not passed the current stage.\n\n"
+                    f"Best regards,\n{company.username} Team"
+                )
+                
+            sender = f'"{company.username} HR Team" <{company.email}>'
+            email_errors = []
+            
+            for app in applications:
+                try:
+                    message = message_template.format(username=app.user.username)
+                    send_mail(
+                        subject,
+                        message,
+                        sender,
+                        [app.user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    email_errors.append(f"Failed to send email to {app.user.email}: {str(e)}")
+                    logger.error(f"Email error for {app.user.email}: {str(e)}")
+            
+            response_data = {
+                "message": f"Updated {updated_count} applications",
+                "status": new_status,
+                "failed": fail,
+                "email_errors": email_errors if email_errors else None
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Bulk update error: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+ 
+ 
+#    In your views.py
     @action(detail=True, methods=["patch"])
     def update_status(self, request, pk=None):
         """Updates application status and sends an email based on success/failure."""
-        print(f"Incoming request data: {request.data}")  # Debugging
-        
         try:
-            application = Application.objects.get(pk=pk)
+            application = self.get_object()
+            company = application.job.company
             new_status = request.data.get("status")
             fail = request.data.get("fail", False)
-
-            # Ensure status is valid
+            print ("application", application)
+            print ("company", company)
+            print ("new_status", new_status)
             if new_status is None:
                 return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            new_status = int(new_status)  # Convert status to integer
+            new_status = int(new_status)
             if isinstance(fail, str):
-                fail = fail.lower() == "true"  # Convert fail flag to boolean
+                fail = fail.lower() == "true"
 
-            # Update application
             application.status = new_status
             application.fail = fail
             application.save()
 
-            # Email content
             if fail:
-                subject = "Application Update: Rejection"
+                subject = f"Application Update from {company.username}"
                 message = (
                     f"Dear {application.user.username},\n\n"
-                    "We regret to inform you that your application has been rejected.\n\n"
-                    "Best regards,\nCompany Team"
+                    f"We regret to inform you that your application for {application.job.title} "
+                    f"at {company.username} has been rejected.\n\n"
+                    f"Best regards,\n{company.username} Team"
                 )
             else:
-                subject = f"Application Update: {self.STATUS_MAP.get(new_status, 'Status Updated')}"
+                status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
+                subject = f"Application Update from {company.username}"
                 message = (
                     f"Dear {application.user.username},\n\n"
-                    f"Your application status has been updated to: {self.STATUS_MAP.get(new_status, 'Updated')}.\n\n"
-                    "Best regards,\nCompany Team"
+                    f"Your application for {application.job.title} at {company.username} "
+                    f"has been updated to: {status_text}.\n\n"
+                    f"Best regards,\n{company.username} Team"
                 )
-
-            # Attempt to send email
+            sender = f'"{company.username} HR Team" <{company.email}>'
             try:
                 send_mail(
                     subject,
                     message,
-                    "aishaamr63@gmail.com",  # Replace with actual sender email
+                    sender,
+                    # company.email,  # Use company's email as sender
                     [application.user.email],
                     fail_silently=False,
                 )
             except Exception as e:
-                logger.error(f"Failed to send email to {application.user.email}: {e}")
+                logger.error(f"Failed to send email: {e}")
                 return Response(
                     {
-                        "message": "Application status updated, but email failed to send",
+                        "message": "Status updated but email failed",
                         "status": application.status,
                         "failed": fail,
                     },
                     status=status.HTTP_200_OK
                 )
 
-            # If everything is successful, return success response
             return Response(
                 {
-                    "message": "Application status updated successfully",
+                    "message": "Status updated successfully",
                     "status": application.status,
                     "failed": fail,
                 },
                 status=status.HTTP_200_OK
             )
-
-        except Application.DoesNotExist:
-            return Response({"error": "Application not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-        except (ValueError, TypeError):
-            return Response({"error": "Invalid status value"}, status=status.HTTP_400_BAD_REQUEST)
-
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+            logger.error(f"Error: {e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=["patch"])
     def schedule_interview(self, request, pk=None):
         application = self.get_object()
+        company = application.job.company
         interview_time_str = request.data.get("interview_time")
         interview_link = request.data.get("interview_link")
         interview_phase = request.data.get("phase")
@@ -200,7 +426,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         try:
             interview_time = make_aware(datetime.datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
         except ValueError:
-            return Response({"error": "Invalid date format, expected YYYY-MM-DD HH:MM"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
 
         interview_types = {
             3: "Technical Assessment",
@@ -212,6 +438,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if interview_phase not in interview_types:
             return Response({"error": "Invalid interview phase"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Update the appropriate fields based on phase
         if interview_phase == 3:
             application.interview_time = interview_time
             application.interview_link = interview_link
@@ -224,18 +451,21 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         application.save()
 
-        subject = f"Your {interview_types[interview_phase]} is Scheduled"
-        message = (f"Dear {application.user.username},\n\n"
-                   f"Your {interview_types[interview_phase]} is scheduled for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
-                   f"Meeting Link: {interview_link}\n\n"
-                   f"Best regards,\nCompany Team")
-
+        subject = f"{interview_types[interview_phase]} Invitation from {company.username}"
+        message = (
+            f"Dear {application.user.username},\n\n"
+            f"{company.username} has scheduled your {interview_types[interview_phase]} "
+            f"for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
+            f"Meeting Link: {interview_link}\n\n"
+            f"Best regards,\n{company.username} Team"
+        )
+        sender = f'"{company.username} Recruitment" <{company.email}>'
         try:
             send_mail(
-                subject,
-                message,
-                "aishaamr63@gmail.com",
-                [application.user.email],
+                subject=subject,
+                message=message,
+                from_email=sender,
+                recipient_list=[application.user.email],
                 fail_silently=False,
             )
         except Exception as e:
@@ -377,22 +607,22 @@ class ApplicationViewSet(viewsets.ModelViewSet):
  
  
 def perform_create_for_admin(application):
-    print(application)
-    user_id = application.user.id
-    job_id = application.job.id
-    cv_url = application.user.cv.url.split('/raw/upload/')[-1].replace('.pdf', '')
-    
-    if not cv_url:
-        raise ValueError("User CV not found")
+        print(application)
+        user_id = application.user.id
+        job_id = application.job.id
+        cv_url = application.user.cv.url.split('/raw/upload/')[-1].replace('.pdf', '')
+        
+        if not cv_url:
+            raise ValueError("User CV not found")
 
-    ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
-    ats_data = {"cv_url": cv_url, "job_id": job_id}
+        ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
+        ats_data = {"cv_url": cv_url, "job_id": job_id}
 
-    ats_response = requests.post(ats_url, json=ats_data)
-    ats_result = ats_response.json()
+        ats_response = requests.post(ats_url, json=ats_data)
+        ats_result = ats_response.json()
 
-    if ats_response.status_code != 200:
-        raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+        if ats_response.status_code != 200:
+           raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
 
     # recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
     # recommendation_response = requests.get(recommendation_url)
@@ -401,12 +631,12 @@ def perform_create_for_admin(application):
     # if recommendation_response.status_code != 200:
     #     raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
 
-    application.ats_res = ats_result.get("match_percentage", 0)
+        application.ats_res = ats_result.get("match_percentage", 0)
     # recommendations_list = recommendations.get("recommendations", [])
     # application.screening_res = json.dumps([job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None])
-    application.save()
+        application.save()
 
-    return ats_result#, recommendations
+        return ats_result#, recommendations
  
     
 async def perform_create_async(application):
@@ -426,11 +656,15 @@ async def perform_create_async(application):
 
         if ats_response.status_code != 200:
             raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+        if ats_response.status_code != 200:
+            raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
 
         recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
         recommendation_response = await client.get(recommendation_url)
         recommendations = recommendation_response.json()
 
+        if recommendation_response.status_code != 200:
+            raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
         if recommendation_response.status_code != 200:
             raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
 
