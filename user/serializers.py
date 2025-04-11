@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-from .models import Company, Jobseeker
+from .models import Company, Jobseeker, User
 from cloudinary.uploader import upload
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
 
 User = get_user_model()
 
@@ -14,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'username', 'password', 'name', 'user_type']
 
-        extra_kwargs = {'password': {'write_only': True, 'min_length': 5}}
+        extra_kwargs = {'password': {'write_only': True, 'min_length': 8}}
     
     def create(self, validated_data):
         user_type = validated_data.pop("user_type", "jobseeker")  # Default to jobseeker
@@ -196,6 +197,70 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
 class OTPVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6, min_length=6) 
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        """Ensure the email exists in the database"""
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email does not exist.")
+        return value
+
+    def send_password_reset_email(self):
+        """Generate token and send reset email"""
+        email = self.validated_data["email"]
+        user = User.objects.get(email=email)
+        token = default_token_generator.make_token(user)
+
+        # Generate a password reset link
+        reset_url = f"http://localhost:5173/reset-password/{user.email}"
+
+         # Email content
+        email_body = (
+            "You requested a password reset.\n\n"
+            "Please visit the following page to reset your password:\n\n"
+            f"{reset_url}\n\n"
+        )
+
+
+        # Send email
+        send_mail(
+            subject="Password Reset Request",
+            message=email_body,
+            from_email="hebagassem911@gmail.com",
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        """Check if email and token are valid before resetting password"""
+        email = data.get("email")
+        token = data.get("token")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "User not found."})
+
+        if not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError({"token": "Invalid or expired token."})
+
+        return data
+
+    def save(self):
+        """Update user password"""
+        email = self.validated_data["email"]
+        new_password = self.validated_data["new_password"]
+        user = User.objects.get(email=email)
+        user.set_password(new_password)
+        user.save()
 
 class AuthTokenSerializer(serializers.Serializer):
     email = serializers.EmailField()
