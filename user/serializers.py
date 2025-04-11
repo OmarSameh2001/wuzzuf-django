@@ -153,7 +153,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             "You requested a password reset.\n\n"
             "Please visit the following page to reset your password:\n\n"
             f"{reset_url}\n\n"
-            "You will need to provide the token sent to you, along with your new password."
         )
 
 
