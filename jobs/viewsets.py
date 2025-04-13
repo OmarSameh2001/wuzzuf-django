@@ -92,7 +92,7 @@ class JobsViewSet(viewsets.ModelViewSet):
             except requests.exceptions.RequestException as e:
                 print("FastAPI request error:", e)
             
-            return JsonResponse({"django_job": self.get_serializer(job).data, "fastapi_job": 'failed'}, status=201)
+            return JsonResponse({"django_job": self.get_serializer(job_instance).data, "fastapi_job": 'failed'}, status=201)
         
         except Exception as e:
             raise serializers.ValidationError(f"An error occurred while creating the job: {e}")

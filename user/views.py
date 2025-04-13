@@ -13,13 +13,14 @@ from .filters import JobseekerFilter
 from rest_framework import status
 from .utils import send_otp_email
 from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
-from .models import Company, Jobseeker
+from .models import Company, Jobseeker, Itian
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import smtplib
 from django.contrib.auth.tokens import default_token_generator
+from rest_framework.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -30,6 +31,16 @@ class UserCreateView(generics.CreateAPIView):
     serializer_class = UserSerializer
 
     def perform_create(self, serializer):
+        print("serializer.validated_data", serializer.validated_data)
+        if serializer.validated_data['user_type'] == User.UserType.JOBSEEKER:
+            if Itian.objects.filter(
+                email=serializer.validated_data['email'],
+                national_id=serializer.validated_data['national_id']
+            ).exists():
+                print("Itian found")
+            else:
+                print("Itian not found")
+                raise ValidationError({"error": "Itian not found contact iti support"})
         # Save the user first
         user = serializer.save()
 

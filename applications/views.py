@@ -93,15 +93,18 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         # def update(self, request, *args, **kwargs):
         #     """Override update method to handle custom logic."""
         instance = self.get_object()
-
-        if int(instance.status) > 1 and instance.ats_res is None:    
+        print("instance", request.data['status'], instance.ats_res)
+        if int(request.data['status']) > 1 and instance.ats_res is None:
+            print("perform_create_for_admin")
             res = perform_create_for_admin(instance)
         print(request.data)
-        return super().update(request, *args, **kwargs)
+        # return super().update(request, *args, **kwargs)
         for field, value in request.data.items():
             setattr(instance, field, value)
-        instance.save()    
-        print("Updated object:", instance)
+
+        # print("instance", res)
+        # instance.save()    
+        # print("Updated object:", instance)
         return super().update(request, *args, **kwargs)
         
 
@@ -491,6 +494,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         fail = request.data.get('fail', False)
         old_status = request.data.get('old_status')
         company = request.data.get('company')
+        job = request.data.get('job')
 
         print(ats)
         if new_status is None:
@@ -499,13 +503,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({'error': 'old_status is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Filter applicants
-        applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company)
+        applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company, job__id=job)
         
         # Update and count affected applicants
         updated_count = applicants.update(status=new_status)
   
         if fail:
-            fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company)
+            fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company, job__id=job)
             fail_count = fail_applicants.update(fail=True)
 
         return Response({
@@ -520,6 +524,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         fail = request.data.get('fail', False)
         old_status = request.data.get('old_status')
         company = request.data.get('company')
+        job = request.data.get('job')
 
         if new_status is None:
             return Response({'error': 'new_status is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -569,7 +574,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                         applicant = Application.objects.get(
                             user__email=email, 
                             status=old_status, 
-                            job__company=company
+                            job__company=company,
+                            job__id =job
                         )
                         applicant.status = new_status
                         applicant.save()
@@ -583,7 +589,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                         applicant = Application.objects.get(
                             user__email=email, 
                             status=old_status, 
-                            job__company=company
+                            job__company=company,
+                            job__id =job
                         )
                         applicant.fail = True
                         applicant.save()
@@ -635,7 +642,7 @@ def perform_create_for_admin(application):
     # recommendations_list = recommendations.get("recommendations", [])
     # application.screening_res = json.dumps([job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None])
         application.save()
-
+        print('Ats result', ats_result)
         return ats_result#, recommendations
  
     

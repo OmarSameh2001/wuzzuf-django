@@ -148,6 +148,25 @@ class Company(User):
         if not self.pk:  # Only set on new objects
             self.user_type = User.UserType.COMPANY
         super().save(*args, **kwargs)
+
+class Itian(models.Model):
+    id = models.AutoField(primary_key=True)
+    email = models.EmailField(
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[EmailValidator(message="Enter a valid email address")],
+    )
+    national_id = models.CharField(
+        max_length=14,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[validate_egyptian_national_id],
+    )
+    file = models.FileField(null=True, blank=True)
+    # def __str__(self):
+    #     return self.email
     
 
 class JobseekerProfile(models.Model):
