@@ -108,7 +108,13 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             if 'cv' in request.FILES:
                print(request.FILES['cv'])
                cv_upload = upload(request.FILES['cv'], resource_type="raw")
-               data['cv'] = cv_upload['secure_url']
+               cv_url = cv_upload['secure_url']
+               
+               if not cv_url.endswith('.pdf'):
+                   cv_url= cv_upload['secure_url']+".pdf"
+                  
+               data['cv'] = cv_url
+               print("cv_upload", cv_url)
             elif 'cv' in data and data['cv'] == '':  # Check for empty string
                 data['cv'] = None    
     
