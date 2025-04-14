@@ -116,7 +116,10 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
-        data = request.data.copy() if not isinstance(request.data, dict) else request.data
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if data.get('national_id') == '':
+            data['national_id'] = None
+
 
         try:
             # Handle image uploads
