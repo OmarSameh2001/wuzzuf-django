@@ -94,8 +94,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         print("instance", request.data['status'], instance.ats_res)
         if int(request.data['status']) > 1 and instance.ats_res is None:
-            print("perform_create_for_admin")
-            res = perform_create_for_admin(instance)
+            try:
+                print("perform_create_for_admin")
+                res = perform_create_for_admin(instance)
+            except Exception as e:
+                logger.error(f"Error in ATS processing: {e}")
         print(request.data)
         # return super().update(request, *args, **kwargs)
         for field, value in request.data.items():
@@ -623,8 +626,11 @@ def perform_create_for_admin(application):
 
         ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
         ats_data = {"cv_url": cv_url, "job_id": job_id}
-
-        ats_response = requests.post(ats_url, json=ats_data)
+        try:
+            ats_response = requests.post(ats_url, json=ats_data)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error connecting to ATS service: {e}")
+            raise Exception("ATS Service is not reachable")
         ats_result = ats_response.json()
 
         if ats_response.status_code != 200:
