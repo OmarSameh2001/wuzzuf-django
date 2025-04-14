@@ -22,6 +22,8 @@ import smtplib
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework.exceptions import ValidationError
 
+from .filters import JobseekerFilter
+from rest_framework.decorators import action
 
 User = get_user_model()
 
@@ -78,7 +80,7 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
-
+    
 class JobseekerViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
     # queryset = Jobseeker.objects.all()
@@ -104,16 +106,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                 image_upload = upload(request.FILES['img'])
                 data['img'] = image_upload['secure_url']
                 # data['img']=data['img']
-                
-            # # Handle CV upload
-            # if 'cv' in request.FILES:
-            #     print(request.FILES['cv'])
-            #     cv_upload = upload(request.FILES['cv'], resource_type="raw")
-            #     data['cv'] = cv_upload['secure_url']
-            #     print("cv_upload", data['cv'])
-            # elif 'cv' in data and data['cv'] == '':  # Check for empty string
-            #     data['cv'] = None    
-                
+        
                 
               # Handle CV upload
             if 'cv' in request.FILES:
@@ -157,6 +150,15 @@ class JobseekerViewSet(viewsets.ModelViewSet):
           print(f"🔴 Error during update: {str(e)}")
         #   print(serializer)
           return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    @action(methods=["post"], detail=False)
+    def get_talents(self, request, *args, **kwargs):
+        # print(request.data)
+        id = int(request.query_params.get('id'))
+        print("id", id)
+        talent = Jobseeker.objects.filter(id=id).first()
+        print("talent", talent)
+        serializer = JobseekerProfileSerializer(talent)
+        return Response(serializer.data)
 
 
 
@@ -166,6 +168,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanyProfileSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    
+     # Add filter backends and pagination for the get_talents action
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = JobseekerFilter
     def get_object(self):
         return self.request.user
 
@@ -179,16 +185,15 @@ class CompanyViewSet(viewsets.ModelViewSet):
             image_upload = upload(request.FILES['img'])
             data['img'] = image_upload['secure_url']
 
-        if 'logo' in request.FILES:
-            logo_upload = upload(request.FILES['logo'])
-            data['logo'] = logo_upload['secure_url']   
+        # if 'logo' in request.FILES:
+        #     logo_upload = upload(request.FILES['logo'])
+        #     data['logo'] = logo_upload['secure_url']   
 
         serializer = self.get_serializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
         return Response(serializer.data)
-
 
 
 # class CompleteProfileView(generics.UpdateAPIView):

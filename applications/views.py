@@ -9,7 +9,6 @@ from jobs.models import Job
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ApplicationFilter
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.core.mail import send_mail
 from rest_framework import  viewsets, status
