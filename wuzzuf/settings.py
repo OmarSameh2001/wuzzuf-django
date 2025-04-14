@@ -14,12 +14,19 @@ from pathlib import Path
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+
 import os
 from dotenv import load_dotenv
 # from cloudinary.storage import CloudinaryStorage
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+CLOUDINARY_URL = "cloudinary://441189999198461:af5RS-cWKp_3sZqoeSNosenA6Jk@dkvyfbtdl"
+cloudinary.config( 
+  cloud_name = "dkvyfbtdl",        # your cloud name
+  api_key = "441189999198461",     # your API key
+  api_secret = "af5RS-cWKp_3sZqoeSNosenA6Jk"  # your API secret
+)
 
 
 # Quick-start development settings - unsuitable for production

@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
+from rest_framework.schemas.openapi import AutoSchema
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
 from cloudinary.uploader import upload_resource
@@ -71,16 +72,33 @@ class UserCreateView(generics.CreateAPIView):
         # user.otp_digit = otp
         # user.save()
 
+class DynamicUserSchema(AutoSchema):
+    def get_serializer(self, path, method):
+        view = self.view
+        user = getattr(view.request, 'user', None)
+        if user and user.user_type == 'company':
+            return CompanyProfileSerializer()
+        return JobseekerProfileSerializer()
 
 class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.all()
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
+    schema = DynamicUserSchema() 
 
     def get_object(self):
         return self.request.user
 
-    
+    def get_serializer_class(self):
+        user = self.request.user
+        if user.user_type == 'JOBSEEKER':
+            return JobseekerProfileSerializer
+        elif user.user_type == 'COMPANY':
+            return CompanyProfileSerializer
+        else:
+            return JobseekerProfileSerializer  # default fallback
+
+
 class JobseekerViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
     # queryset = Jobseeker.objects.all()

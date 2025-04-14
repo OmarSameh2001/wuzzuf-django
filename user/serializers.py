@@ -114,7 +114,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             ]
         read_only_fields = ['email']
         
-        def update(self, instance, validated_data):
+    def update(self, instance, validated_data):
             request = self.context.get('request')
         
             # Process file uploads if present in request.FILES
