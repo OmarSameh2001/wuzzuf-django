@@ -14,7 +14,7 @@ from .filters import JobFilter
 from rest_framework import serializers
 from questions.models import Question
 from user.models import Company
-
+from django.db.models import Count, Case, When, IntegerField
 
 
 FASTAPI_URL = "http://127.0.0.1:8001/jobs"
@@ -189,3 +189,48 @@ class JobsViewSet(viewsets.ModelViewSet):
         return Response({"error": f"Failed to sync delete with FastAPI: {e}"}, status=500)
 
       return Response(status=204)
+ 
+ 
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        jobs = self.get_queryset().annotate(
+            total_applicants=Count('application'),
+            closed=Case(
+                When(status=0, then=1),
+                default=0,
+                output_field=IntegerField()
+            )
+        )
+        
+        stats_data = []
+        for job in jobs:
+            stats_data.append({
+                'id': job.id,
+                'title': job.title,
+                'status': 'Closed' if job.status == 0 else 'Open',
+                'total_applicants': job.total_applicants,
+            })
+            
+        return Response(stats_data)
+      
+    def get_meetings(self, application):
+        meetings = []
+        if application.interview_time:
+            meetings.append({
+                "type": "Technical Interview",
+                "time": application.interview_time,
+                "link": application.interview_link
+            })
+        if application.hr_time:
+            meetings.append({
+                "type": "HR Interview",
+                "time": application.hr_time,
+                "link": application.hr_link
+            })
+        if application.offer_time:
+            meetings.append({
+                "type": "Offer Meeting",
+                "time": application.offer_time,
+                "link": application.offer_link
+            })
+        return meetings
