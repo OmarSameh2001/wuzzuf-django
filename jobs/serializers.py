@@ -19,7 +19,7 @@ class JobsSerializer(serializers.ModelSerializer):
 
     def get_company_logo(self, obj):
         if obj.company.img:
-            print("company logo",obj.company.img.url)
+            # print("company logo",obj.company.img.url)
             from cloudinary import CloudinaryImage
             img = CloudinaryImage(str(obj.company.img))
             return img.build_url()
