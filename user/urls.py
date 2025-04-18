@@ -3,12 +3,13 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserCreateView, UserRetrieveUpdateView,
     JobseekerViewSet, CompanyViewSet, CustomAuthToken, JobseekerListView,VerifyOTPView, GetPasswordResetTokenView
-    ,PasswordResetRequestView, PasswordResetConfirmView, check_email_exists, check_username_exists
+    ,PasswordResetRequestView, PasswordResetConfirmView, check_email_exists, check_username_exists, AdminUserViewSet
 )
 
 router = DefaultRouter()
 router.register(r'jobseekers', JobseekerViewSet, basename='jobseeker')
 router.register(r'companies', CompanyViewSet, basename='company')
+router.register(r'admin/users', AdminUserViewSet, basename='admin-users')
 
 urlpatterns = [
     path('register/', UserCreateView.as_view(), name='register'),

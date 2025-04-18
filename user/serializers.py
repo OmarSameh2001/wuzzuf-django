@@ -18,10 +18,20 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True, 'min_length': 8}}
     
     def create(self, validated_data):
-        user_type = validated_data.pop("user_type", "jobseeker")  # Default to jobseeker
-        user = User.objects.create_user(**validated_data, user_type=user_type)
+        user_type = validated_data.pop("user_type", "jobseeker").upper()
+        
+        user = User(**validated_data)
+        user.user_type = user_type
+
+        if user_type == "ADMIN":
+            user.is_staff = True
+            user.is_superuser = True
+
+        user.set_password(validated_data["password"])
+        user.save()
 
         return user
+
     
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
@@ -225,8 +235,14 @@ class AuthTokenSerializer(serializers.Serializer):
             username=email,
             password=password
         )
-        print(email,password, user)
+        
+        print(f"Validating user: {email}, {password}, {user}")
         if not user:
             raise serializers.ValidationError(_('Unable to authenticate with provided credentials'), code='authorization')
+        
+        # Check if the user is a superuser (admin)
+        if user.is_superuser:
+            user.user_type = 'ADMIN'
+
         attrs['user'] = user
         return attrs

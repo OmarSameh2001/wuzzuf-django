@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import generics, viewsets, filters, status
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly,IsAdminUser
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
@@ -26,8 +26,15 @@ from rest_framework.exceptions import ValidationError
 from .filters import JobseekerFilter
 from rest_framework.decorators import action
 
+
 User = get_user_model()
 
+class AdminUserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['email', 'name', 'user_type']
 
 class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -341,37 +348,51 @@ class CustomAuthToken(ObtainAuthToken):
         serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
-        print("user", user.id)
-        print("user", user.user_type)
 
+        # Check if user is active before proceeding
+        if not user.is_active:
+            return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check for OTP verification status (for Jobseeker)
         if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
             return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Create or get the authentication token
         token, _ = Token.objects.get_or_create(user=user)
 
+        # Create response data
         user_data = {
             "token": token.key,
             "id": user.id,
             "user_type": user.user_type,
             "email": user.email,
             "name": user.name,
-            # "img": user.img,
             "location": user.location,
             "phone_number": user.phone_number,
         }
 
-        # Add extra fields for Jobseekers
+        if not user.is_active:
+            print("User is not active")
+            return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
+            print("Jobseeker OTP not verified")
+            return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        # Check if the user is a superuser and update the user_type
+        if user.is_superuser:
+            user_data.update({"user_type": "admin"})
+
+        # Add extra fields based on user type
         if user.user_type == User.UserType.JOBSEEKER:
             user_data.update({
                 "dob": user.dob,
                 "education": user.education,
                 "experience": user.experience,
-                # "cv": user.cv,
                 "keywords": user.keywords,
                 "skills": user.skills,
             })
-
-        # Add extra fields for Companies
         elif user.user_type == User.UserType.COMPANY:
             user_data.update({
                 "est": user.est,
@@ -379,4 +400,5 @@ class CustomAuthToken(ObtainAuthToken):
             })
 
         return Response(user_data)
+
 

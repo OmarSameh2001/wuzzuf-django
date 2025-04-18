@@ -47,6 +47,8 @@ class User(AbstractUser):
     class UserType(models.TextChoices):
         JOBSEEKER = "JOBSEEKER", "Jobseeker"
         COMPANY = "COMPANY", "Company"
+        ADMIN = "ADMIN", "Admin"
+
 
     #shared fields
     id = models.AutoField(primary_key=True)
@@ -85,6 +87,7 @@ class User(AbstractUser):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    accounts = models.JSONField(default=dict)
 
     # OTP Verification Fields
     otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code
