@@ -25,6 +25,7 @@ from rest_framework.exceptions import ValidationError
 
 from .filters import JobseekerFilter
 from rest_framework.decorators import action
+from django.db.models import Q
 
 
 import csv
@@ -32,6 +33,7 @@ from io import StringIO
 import pandas as pd
 from django.core.validators import EmailValidator
 from .models import validate_egyptian_national_id
+from rest_framework.filters import SearchFilter
 
 
 User = get_user_model()
@@ -47,14 +49,28 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def company(self, request):
         queryset = Company.objects.filter(is_verified=False, is_active=True)
+        search = request.query_params.get('search', None)
         filterset = CompanyFilter(request.query_params, queryset=queryset)
         page_size = request.query_params.get('page_size', 10)
         page = request.query_params.get('page', 1)
-        serializer = CompanyProfileSerializer(filterset.qs, many=True)
+
+        # Filter by email or name if a search term is provided
+        if search:
+            queryset = queryset.filter(
+                Q(email__icontains=search) | Q(name__icontains=search)
+            )
+        else:
+            companies = Company.objects.all()
+
         paginator = PageNumberPagination()
         paginator.page_size = page_size
-        result_page = paginator.paginate_queryset(serializer.data, request)
-        return paginator.get_paginated_response(result_page)
+        result_page = paginator.paginate_queryset(queryset, request)
+
+        serializer = CompanyProfileSerializer(result_page, many=True)
+
+
+        return paginator.get_paginated_response(serializer.data)
+
 
     @action(detail=False, methods=['patch'])
     def verify_company(self, request):
@@ -70,9 +86,18 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def itian(self, request):
+        search = request.query_params.get('search', '')
         page_size = int(request.query_params.get('page_size', 10))
         page = int(request.query_params.get('page', 1))
-        itians = Itian.objects.all()
+        
+        # Filter by email or national_id if a search term is provided
+        if search:
+            itians = Itian.objects.filter(
+                Q(email__icontains=search) | Q(national_id__icontains=search)
+            )
+        else:
+            itians = Itian.objects.all()
+
         paginator = PageNumberPagination()
         paginator.page_size = page_size
         result_page = paginator.paginate_queryset(itians, request)

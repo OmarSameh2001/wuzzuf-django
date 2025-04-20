@@ -63,6 +63,7 @@ class User(AbstractUser):
         validators=[EmailValidator(message="Enter a valid email address")],
     )
     name = models.CharField(
+        blank=True, null=True,
         max_length=255,
         validators=[
             RegexValidator(
