@@ -9,7 +9,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'jobseekers', JobseekerViewSet, basename='jobseeker')
 router.register(r'companies', CompanyViewSet, basename='company')
-router.register(r'admin/users', AdminUserViewSet, basename='admin-users')
+router.register(r'admin', AdminUserViewSet, basename='admin-users')
 
 urlpatterns = [
     path('register/', UserCreateView.as_view(), name='register'),

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-from .models import Company, Jobseeker, User
+from .models import Company, Jobseeker, User, Itian
 from cloudinary.uploader import upload
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
@@ -13,7 +13,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'username', 'password', 'name', 'user_type', 'national_id']
+        fields = ['email', 'username', 'password', 'name', 'user_type', 'national_id', 'accounts']
 
         extra_kwargs = {'password': {'write_only': True, 'min_length': 8}}
     
@@ -65,7 +65,8 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'about', 
             'dob', 
             'education', 
-            'experience', 
+            'experience',
+            'accounts', 
             'cv', 
             'img', 
             'national_id', 
@@ -121,6 +122,8 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'location', 
             'phone_number',
             'user_type',
+            'accounts',
+            'is_verified'
             ]
         read_only_fields = ['email']
         
@@ -151,6 +154,11 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
 
             return instance
 
+
+class ItianSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Itian
+        fields = '__all__'
 
 class OTPVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()

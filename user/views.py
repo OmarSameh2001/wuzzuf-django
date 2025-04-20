@@ -10,10 +10,10 @@ from cloudinary.uploader import upload
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
-from .filters import JobseekerFilter
+from .filters import JobseekerFilter, CompanyFilter
 from rest_framework import status
 from .utils import send_otp_email
-from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
+from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer
 from .models import Company, Jobseeker, Itian
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
@@ -27,14 +27,145 @@ from .filters import JobseekerFilter
 from rest_framework.decorators import action
 
 
+import csv
+from io import StringIO
+import pandas as pd
+from django.core.validators import EmailValidator
+from .models import validate_egyptian_national_id
+
+
 User = get_user_model()
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUser]
+    # permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['email', 'name', 'user_type']
+    parser_classes = [MultiPartParser, FormParser]
+
+    @action(detail=False, methods=['get'])
+    def company(self, request):
+        queryset = Company.objects.filter(is_verified=False, is_active=True)
+        filterset = CompanyFilter(request.query_params, queryset=queryset)
+        page_size = request.query_params.get('page_size', 10)
+        page = request.query_params.get('page', 1)
+        serializer = CompanyProfileSerializer(filterset.qs, many=True)
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        result_page = paginator.paginate_queryset(serializer.data, request)
+        return paginator.get_paginated_response(result_page)
+
+    @action(detail=False, methods=['patch'])
+    def verify_company(self, request):
+        id = request.query_params.get('id')
+        company = Company.objects.filter(id=id).first()
+
+        print("company", id)
+        if not company:
+            return Response({"message": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        company.is_verified = True
+        company.save()
+        return Response({"message": "Company verified successfully"})
+    
+    @action(detail=False, methods=['get'])
+    def itian(self, request):
+        page_size = int(request.query_params.get('page_size', 10))
+        page = int(request.query_params.get('page', 1))
+        itians = Itian.objects.all()
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        result_page = paginator.paginate_queryset(itians, request)
+        serializer = ItianSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def create_itian(self, request):
+        file = request.FILES.get('file', None)
+        print("file", file)
+        if not file:
+            email = request.data.get('email')
+            national_id = request.data.get('national_id')
+            if not email or not national_id:
+                return Response({"error": "Email and national_id are required"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Validate email format
+                EmailValidator()(email)
+                validate_egyptian_national_id(str(national_id))
+                if User.objects.filter(email=email).exists():
+                    return Response({"error": f"User {email} already exists."}, status=status.HTTP_400_BAD_REQUEST)
+                if Itian.objects.filter(email=email, national_id=national_id).exists():
+                    return Response({"error": f"User {email} already exists."}, status=status.HTTP_400_BAD_REQUEST)
+                Itian.objects.create(
+                    email=email,
+                    national_id=national_id,
+                )
+                return Response({"message": f"User {email} created successfully."}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({"error": f"Error creating user {email}: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            file_name = file.name
+            try:
+                if file_name.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(file)
+                elif file_name.endswith('.csv'):
+                    try:
+                        df = pd.read_csv(file, encoding='utf-8', on_bad_lines='skip')
+                    except UnicodeDecodeError:
+                        try:
+                            df = pd.read_csv(file, encoding='ISO-8859-1', on_bad_lines='skip')
+                        except UnicodeDecodeError:
+                            df = pd.read_csv(file, encoding='Windows-1252', on_bad_lines='skip')
+                else:
+                    return Response({"error": 'Unsupported file format. Please upload a CSV or Excel file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                if 'email' not in df.columns or 'national_id' not in df.columns:
+                    return Response({"error": 'File must contain "email" and "national_id" columns'}, status=status.HTTP_400_BAD_REQUEST)
+
+                num = 0
+                bad = 0
+                for index, row in df.iterrows():
+                    email = row['email']
+                    national_id = row['national_id']
+                    try:
+                        # Validate email format
+                        EmailValidator()(email)
+                        validate_egyptian_national_id(str(national_id))
+                        if Itian.objects.filter(email=email, national_id=national_id).exists():
+                            bad += 1
+                            continue
+
+                        Itian.objects.create(
+                            email=email,
+                            national_id=national_id,
+                        )
+                        num += 1
+                    except Exception as e:
+                        print({"error": f"Error creating user {email}: {e}"})
+                        bad += 1
+                        continue
+
+                if num > 0: 
+                    if bad > 0:
+                        return Response({"message": f"Successfully created {num} users. {bad} users failed."}, status=status.HTTP_201_CREATED)
+                    return Response({"message": f"Successfully created {num} users."}, status=status.HTTP_201_CREATED)
+                elif bad > 0:
+                    return Response({"message": f"{bad} users failed validation."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"message": "No new users created."}, status=status.HTTP_200_OK)
+
+            except Exception as e:
+                return Response({"error": f"Error processing file: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['delete'])
+    def delete_itian(self, request):
+        id = request.query_params.get('id')
+        itian = Itian.objects.filter(id=id).first()
+        if not itian:
+            return Response({"message": "Itian not found"}, status=status.HTTP_404_NOT_FOUND)
+        itian.delete()  
+        return Response({"message": "Itian deleted successfully"})
+
 
 class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()

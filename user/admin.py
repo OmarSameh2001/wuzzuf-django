@@ -91,7 +91,7 @@ class CompanyAdmin(admin.ModelAdmin):
             None,
             {"fields": ("email", "username", "password", "name", "phone_number")},
         ),
-        ("Company Details", {"fields": ("est", "industry", "img")}),
+        ("Company Details", {"fields": ("est", "industry", "img", "accounts")}),
     )
     readonly_fields = ["last_login"]
 
