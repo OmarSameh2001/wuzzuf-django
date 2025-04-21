@@ -21,6 +21,7 @@ import json
 import httpx
 import csv
 from io import StringIO
+from .email import send_bulk_application_emails
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 logger = logging.getLogger(__name__)
@@ -188,9 +189,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             logger.error(f"Bulk update error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
- 
- 
-#    In your views.py
+
     @action(detail=True, methods=["patch"])
     def update_status(self, request, pk=None):
         """Updates application status and sends an email based on success/failure."""
@@ -340,47 +339,95 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         try:
             ats = int(request.data.get('ats', 0))
             new_status = request.data.get('new_status')
-            fail = request.data.get('fail', False)
+            fail = request.data.get('fail', False) in ['true', 'True', True, '1', 1]
             old_status = request.data.get('old_status')
             company = request.data.get('company')
             job = request.data.get('job')
+        
 
             print(ats)
             if new_status is None:
                 return Response({'error': 'new_status is required'}, status=status.HTTP_400_BAD_REQUEST)
             if old_status is None:
                 return Response({'error': 'old_status is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-            try:
-                updated_count = 0
-                # Filter applicants
-                applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company, job__id=job, fail=False)
+        # Process success
+            success_apps = list(Application.objects.filter(
+                ats_res__gte=ats, 
+                status=old_status, 
+                job__company=company, 
+                job__id=job, 
+                fail=False
+            ))
+            
+            for app in success_apps:
+              app.status = new_status
+              app.save()
+    
+            # updated_count = success_apps.update(status=new_status)
+            email_errors_success = send_bulk_application_emails(success_apps, self.STATUS_MAP.get(int(new_status), 'Updated'), fail=False)
+             # Process failure
+            fail_count = 0
+            email_errors_fail = []
+            if fail:
+                fail_apps = list(Application.objects.filter(
+                    ats_res__lt=ats, 
+                    status=old_status, 
+                    job__company=company, 
+                    job__id=job, 
+                    fail=False
+                ))
                 
-                # Update and count affected applicants
-                updated_count = applicants.update(status=new_status)
-            except Exception as e:
-                return Response({'error': f'Error updating applicants: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            try:
-                fail_count = 0
+                for app in fail_apps:
+                    app.fail = True
+                    app.save()
+                    
+                email_errors_fail = []
                 if fail:
-                    fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company, job__id=job, fail=False)
-                    fail_count = fail_applicants.update(fail=True)
-            except Exception as e:
-                return Response({'error': f'Error marking applicants as failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+                      email_errors_fail = send_bulk_application_emails(failed_apps, fail=True)
 
             return Response({
-                'message': f'{updated_count} applicants updated, {fail_count} marked as failed.',
-                'ATS': ats,
-                'new_status': new_status
+                'message': f'{len(success_apps)} applicants updated, {len(fail_count)} marked as failed.',
+                'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
             })
+
         except Exception as e:
-            return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+           return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        #     try:
+        #         updated_count = 0
+        #         # Filter applicants
+        #         applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company, job__id=job, fail=False)
+                
+        #         # Update and count affected applicants
+        #         updated_count = applicants.update(status=new_status)
+        #     except Exception as e:
+        #         return Response({'error': f'Error updating applicants: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #     try:
+        #         fail_count = 0
+        #         if fail:
+        #             fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company, job__id=job, fail=False)
+        #             fail_count = fail_applicants.update(fail=True)
+        #     except Exception as e:
+        #         return Response({'error': f'Error marking applicants as failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #     return Response({
+        #         'message': f'{updated_count} applicants updated, {fail_count} marked as failed.',
+        #         'ATS': ats,
+        #         'new_status': new_status
+        #     })
+        # except Exception as e:
+        #     return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
     @action(detail=False, methods=['post'])
     def update_status_by_csv(self, request):
         success = int(request.data.get('success', 50))
         new_status = request.data.get('new_status')
-        fail = request.data.get('fail', False)
+        fail = str(request.data.get('fail', 'false')).lower() in ['true', '1', 'yes']
         old_status = request.data.get('old_status')
         company = request.data.get('company')
         job = request.data.get('job')
@@ -415,63 +462,105 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             if 'email' not in df.columns or 'score' not in df.columns:
                 return Response({'error': 'File must contain "email" and "score" columns'}, 
                             status=status.HTTP_400_BAD_REQUEST)
+            
+            
+            
+            updated_apps = []
+            failed_apps = []
 
-            updated_count = 0
-            fail_count = 0
-            success_emails = []
-            fail_emails = []
+            # updated_count = 0
+            # fail_count = 0
+            # success_emails = []
+            # fail_emails = []
 
             for _, row in df.iterrows():
+                print('email', row['email'])
+                print('score', row['score'])
                 email = row['email'].strip()
                 try:
                     score = float(row['score'])
                 except ValueError:
                     continue
-
-                if score >= success:
-                    try:
-                        applicant = Application.objects.get(
-                            user__email=email, 
-                            status=old_status, 
-                            job__company=company,
-                            job__id =job,
-                            fail=False
-                        )
+                
+                print("email", email)
+                print("score", score)
+                
+                try:
+                    applicant = Application.objects.get(
+                        user__email=email,
+                        status=old_status,
+                        job__company=company,
+                        job__id=job,
+                        fail=False
+                    )
+                    print("score>= success",score>= success)    
+                    if score >= success:
                         applicant.status = new_status
                         applicant.save()
-                        updated_count += 1
-                        success_emails.append(email)
-                    except ObjectDoesNotExist:
-                        continue
-
-                elif fail:
-                    try:
-                        applicant = Application.objects.get(
-                            user__email=email, 
-                            status=old_status, 
-                            job__company=company,
-                            job__id =job,
-                            fail=False
-                        )
+                        updated_apps.append(applicant)
+                    elif score < success and fail:
                         applicant.fail = True
                         applicant.save()
-                        fail_count += 1
-                        fail_emails.append(email)
-                    except ObjectDoesNotExist:
-                        continue
+                        failed_apps.append(applicant)
+                except ObjectDoesNotExist:
+                    continue
 
+            email_errors_success = send_bulk_application_emails(updated_apps, self.STATUS_MAP.get(int(new_status), 'Updated'), fail=False)
+            email_errors_fail = send_bulk_application_emails(failed_apps, fail=True) if fail else []
+         
             return Response({
-                'message': f'{updated_count} applicants updated and {fail_count} applicants marked as failed.',
-                'success_score': success,
-                'new_status': new_status,
-                # 'success_emails': success_emails,
-                # 'fail_emails': fail_emails
+                'message': f'{len(updated_apps)} applicants updated and {len(failed_apps)} applicants marked as failed.',
+                'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
             })
 
         except Exception as e:
-            return Response({'error': f'Error processing file: {str(e)}'}, 
-                        status=status.HTTP_400_BAD_REQUEST)
-    from rest_framework.pagination import PageNumberPagination
+            return Response({'error': f'Error processing file: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+    #             if score >= success:
+    #                 try:
+    #                     applicant = Application.objects.get(
+    #                         user__email=email, 
+    #                         status=old_status, 
+    #                         job__company=company,
+    #                         job__id =job,
+    #                         fail=False
+    #                     )
+    #                     applicant.status = new_status
+    #                     applicant.save()
+    #                     updated_count += 1
+    #                     success_emails.append(email)
+    #                 except ObjectDoesNotExist:
+    #                     continue
+
+    #             elif fail:
+    #                 try:
+    #                     applicant = Application.objects.get(
+    #                         user__email=email, 
+    #                         status=old_status, 
+    #                         job__company=company,
+    #                         job__id =job,
+    #                         fail=False
+    #                     )
+    #                     applicant.fail = True
+    #                     applicant.save()
+    #                     fail_count += 1
+    #                     fail_emails.append(email)
+    #                 except ObjectDoesNotExist:
+    #                     continue
+
+    #         return Response({
+    #             'message': f'{updated_count} applicants updated and {fail_count} applicants marked as failed.',
+    #             'success_score': success,
+    #             'new_status': new_status,
+    #             # 'success_emails': success_emails,
+    #             # 'fail_emails': fail_emails
+    #         })
+
+    #     except Exception as e:
+    #         return Response({'error': f'Error processing file: {str(e)}'}, 
+    #                     status=status.HTTP_400_BAD_REQUEST)
+    # from rest_framework.pagination import PageNumberPagination
 
     @action(detail=False, methods=['get'])
     def meetings(self, request):
