@@ -33,4 +33,5 @@ urlpatterns = [
     path('user/', include('user.urls')),
     path('applications/', include('applications.urls')),
     path('answers/', include('answers.urls')),
+
 ]

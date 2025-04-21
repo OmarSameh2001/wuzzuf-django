@@ -9,7 +9,6 @@ from jobs.models import Job
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ApplicationFilter
-from rest_framework.response import Response
 from django.core.mail import send_mail
 from rest_framework import  viewsets, status
 from django.utils.timezone import make_aware
@@ -23,11 +22,17 @@ import csv
 from io import StringIO
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
+from applications.cloudinary import upload_audio
+import tempfile
+
 logger = logging.getLogger(__name__)
 
 
 
 FASTAPI_URL = "http://127.0.0.1:8001" 
+
+
+
 
 class CustomPagination(PageNumberPagination):
      page_size = 5  # Adjust as needed
@@ -110,159 +115,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
         
 
-          
-
-
-    # @action(detail=True, methods=["patch"])
-    # def update_status(self, request, pk=None):
-    #     """Updates application status and sends an email based on success/failure."""
-    #     print(f"Incoming request data: {request.data}")  # Debugging
-        
-    #     try:
-    #         application = Application.objects.get(pk=pk)
-    #         new_status = request.data.get("status")
-    #         fail = request.data.get("fail", False)
-
-    #         # Ensure status is valid
-    #         if new_status is None:
-    #             return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #         new_status = int(new_status)  # Convert status to integer
-    #         if isinstance(fail, str):
-    #             fail = fail.lower() == "true"  # Convert fail flag to boolean
-
-    #         # Update application
-    #         application.status = new_status
-    #         application.fail = fail
-    #         application.save()
-
-    #         # Email content
-    #         if fail:
-    #             subject = "Application Update: Rejection"
-    #             message = (
-    #                 f"Dear {application.user.username},\n\n"
-    #                 "We regret to inform you that your application has been rejected.\n\n"
-    #                 "Best regards,\nCompany Team"
-    #             )
-    #         else:
-    #             subject = f"Application Update: {self.STATUS_MAP.get(new_status, 'Status Updated')}"
-    #             message = (
-    #                 f"Dear {application.user.username},\n\n"
-    #                 f"Your application status has been updated to: {self.STATUS_MAP.get(new_status, 'Updated')}.\n\n"
-    #                 "Best regards,\nCompany Team"
-    #             )
-
-    #         # Attempt to send email
-    #         try:
-    #             send_mail(
-    #                 subject,
-    #                 message,
-    #                 "aishaamr63@gmail.com",  # Replace with actual sender email
-    #                 [application.user.email],
-    #                 fail_silently=False,
-    #             )
-    #         except Exception as e:
-    #             logger.error(f"Failed to send email to {application.user.email}: {e}")
-    #             return Response(
-    #                 {
-    #                     "message": "Application status updated, but email failed to send",
-    #                     "status": application.status,
-    #                     "failed": fail,
-    #                 },
-    #                 status=status.HTTP_200_OK
-    #             )
-
-    #         # If everything is successful, return success response
-    #         return Response(
-    #             {
-    #                 "message": "Application status updated successfully",
-    #                 "status": application.status,
-    #                 "failed": fail,
-    #             },
-    #             status=status.HTTP_200_OK
-    #         )
-
-    #     except Application.DoesNotExist:
-    #         return Response({"error": "Application not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-    #     except (ValueError, TypeError):
-    #         return Response({"error": "Invalid status value"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     except Exception as e:
-    #         logger.error(f"Unexpected error: {e}")
-    #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # @action(detail=True, methods=["patch"])
-    # def schedule_interview(self, request, pk=None):
-    #     application = self.get_object()
-    #     interview_time_str = request.data.get("interview_time")
-    #     interview_link = request.data.get("interview_link")
-    #     interview_phase = request.data.get("phase")
-
-    #     if not interview_time_str or not interview_link or not isinstance(interview_phase, int):
-    #         return Response({"error": "Missing or invalid interview details"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     try:
-    #         interview_time = make_aware(datetime.datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
-    #     except ValueError:
-    #         return Response({"error": "Invalid date format, expected YYYY-MM-DD HH:MM"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     interview_types = {
-    #         3: "Technical Assessment",
-    #         4: "Technical Interview",
-    #         5: "HR Interview",
-    #         6: "Offer Interview"
-    #     }
-
-    #     if interview_phase not in interview_types:
-    #         return Response({"error": "Invalid interview phase"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     if interview_phase == 3:
-    #         application.interview_time = interview_time
-    #         application.interview_link = interview_link
-    #     elif interview_phase == 4:
-    #         application.hr_time = interview_time
-    #         application.hr_link = interview_link
-    #     elif interview_phase == 5:
-    #         application.offer_time = interview_time
-    #         application.offer_link = interview_link
-
-    #     application.save()
-
-    #     subject = f"Your {interview_types[interview_phase]} is Scheduled"
-    #     message = (f"Dear {application.user.username},\n\n"
-    #                f"Your {interview_types[interview_phase]} is scheduled for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
-    #                f"Meeting Link: {interview_link}\n\n"
-    #                f"Best regards,\nCompany Team")
-
-    #     try:
-    #         send_mail(
-    #             subject,
-    #             message,
-    #             "aishaamr63@gmail.com",
-    #             [application.user.email],
-    #             fail_silently=False,
-    #         )
-    #     except Exception as e:
-    #         logger.error(f"Failed to send interview email to {application.user.email}: {e}")
-    #         print(f"Failed to send interview email to {application.user.email}: {e}")
-    #         # return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    #     return Response({"message": f"{interview_types[interview_phase]} scheduled successfully"}, status=status.HTTP_200_OK)
-    # @action(methods=["patch"], detail=True)
-    # def set_assessment_link(self, request, pk=None):
-    #     """Updates application with new assessment link"""
-    #     application = self.get_object()
-    #     assessment_link = request.data.get("assessment_link")
-    #     if assessment_link is None:
-    #         return Response({"error": "Assessment link is required"}, status=status.HTTP_400_BAD_REQUEST)
-    #     application.assessment_link = assessment_link
-    #     application.save()
-    #     return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
- 
- 
- 
-    # Add this to your ApplicationViewSet in views.py
     @action(detail=False, methods=['patch'])
     def bulk_update_status(self, request):
         """Bulk update status for multiple applications"""
@@ -613,7 +465,205 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({'error': f'Error processing file: {str(e)}'}, 
                         status=status.HTTP_400_BAD_REQUEST)
 
- 
+  
+   
+    
+        
+    # @action(detail=True, methods=['post'])
+    # def submit_audio(self, request, pk=None):
+    #     try:
+    #         application = self.get_object()
+    #         audio_file = request.FILES.get('audio')
+    #         question = request.data.get('question')
+    #         print("audio_file", audio_file)
+    #         print("question", question)
+    #         print("application", application)
+    #         # Validate audio file
+    #         # if not audio_file or not audio_file.name.lower().endswith(('.wav', '.mp3')):
+    #         #     return Response(
+    #         #         {'error': 'Valid audio file required'},
+    #         #         status=status.HTTP_400_BAD_REQUEST
+    #         #     )
+    #         if not audio_file:
+    #             return Response({'error': 'No audio file received'}, status=400)
+    #         if not question:
+    #             return Response({'error': 'Question missing'}, status=400)
+            
+    #         print("audio_file", audio_file)
+    #         print("audio_file.name", audio_file.name)
+    #         print("audio_file.content_type", audio_file.content_type)
+    #         try:
+    #             # Upload to Cloudinary
+    #             cloudinary_result = upload_audio(audio_file)
+    #             print("cloudinary_result", cloudinary_result)
+    #             audio_url = cloudinary_result['url']
+    #         except Exception as e:
+    #           return Response({'error': f'Cloudinary upload failed: {str(e)}'}, status=500)
+     
+     
+     
+     
+     
+     
+     
+     
+            # # Prepare for FastAPI analysis
+            # with tempfile.NamedTemporaryFile() as tmp:
+            #     for chunk in audio_file.chunks():
+            #         tmp.write(chunk)
+            #     tmp.flush()
+                
+                # files = {'audio': open(tmp.name, 'rb')}
+                # data = {
+                #     'question': question,
+                #     'job_description': application.job.description
+                # }
+                # print("data", data)
+                # print("files", files)
+              
+        try:
+            fastapi_response = requests.post(
+                f"{FASTAPI_URL}/analyze_audio/",
+                json={
+                    "audio_url": audio_url,
+                    "question": question
+                }
+            )
+            if fastapi_response.status_code != 200:
+                return Response({'error': 'Processing failed'}, status=500)
+            analysis_result = fastapi_response.json()
+        except Exception as e:
+            return Response({'error': f'FastAPI request failed: {str(e)}'}, status=500)
+        
+        # Do whatever you need with `analysis_result` (save to model etc.)
+        return Response({"message": "Analysis complete", "result": analysis_result})
+            #     if response.status_code != 200:
+        #         return Response(
+        #             {'error': 'Analysis failed'},
+        #             status=response.status_code
+        #         )
+
+        #     # Save results
+        #     analysis_data = response.json()
+        #     application.screening_res = json.dumps({
+        #         **analysis_data,
+        #         'audio_url': cloudinary_result['url']
+        #     })
+            
+        #     if analysis_data['total_score'] >= 70:
+        #         application.status = str(int(application.status) + 1)
+                
+        #     application.save()
+
+        #     return Response(analysis_data)
+
+        # except Exception as e:
+        #     logger.error(f"Audio processing error: {str(e)}")
+        #     return Response(
+        #         {'error': 'Processing failed'},
+        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        #     )
+        
+        
+        
+        
+    # views.py updates
+    # @action(detail=True, methods=['post'])
+    # def submit_audio(self, request, pk=None):
+    #     try:
+    #         application = self.get_object()
+    #         audio_file = request.FILES.get('audio_file')
+    #         question = request.POST.get('question')
+            
+            
+            
+    #         if 'audio_file' not in request.FILES:
+    #                     return Response({'error': 'No audio file provided'}, status=400)
+                    
+    #         audio_file = request.FILES['audio_file']
+                
+    #             # Verify MIME type
+    #         if audio_file.content_type not in ALLOWED_MIME_TYPES:
+    #                 return Response({'error': 'Invalid audio format'}, status=400)
+                    
+    #             # Verify file signature
+    #         header = audio_file.read(4)
+    #         audio_file.seek(0)
+            
+    #         ALLOWED_SIGNATURES = [b'RIFF', b'OggS', b'ID3', b'\x1aE\xdf\xa3']
+            
+    #         if header[:4] not in [b'RIFF', b'OggS', b'ID3']:
+    #                 return Response({'error': 'Invalid audio file signature'}, status=400)
+                    
+
+    #         # Upload to Cloudinary
+    #         cloudinary_result = upload_audio(audio_file)
+            
+    #         # Send to FastAPI
+    #         payload = {
+    #             'audio_url': cloudinary_result['url'],
+    #             'question': question,
+    #             'job_description': application.job.description
+    #         }
+            
+    #         response = httpx.post(
+    #             f"{FASTAPI_URL}/analyze_interview/",
+    #             files={'audio_file': audio_file},
+    #             data={'question': question, 'job_description': application.job.description}
+    #         )
+            
+    #         # Save results
+    #         application.screening_res = json.dumps({
+    #             'audio_analysis': response.json(),
+    #             'cloudinary_url': cloudinary_result['url']
+    #         })
+    #         application.save()
+
+    #         return Response(response.json())
+            
+    #     except Exception as e:
+    #         return Response({"error": str(e)}, status=500)
+
+
+    # def send_analysis_email(self, application, scores):
+    #     """Helper method to send analysis results email"""
+    #     try:
+    #         company = application.job.company
+    #         subject = f"Your Interview Results for {application.job.title}"
+            
+    #         # Format scores for email
+    #         score_details = "\n".join(
+    #             f"{key.replace('_', ' ').title()}: {value}%"
+    #             for key, value in scores.items()
+    #         )
+            
+    #         message = (
+    #             f"Dear {application.user.username},\n\n"
+    #             f"Your interview for {application.job.title} at {company.username} "
+    #             f"has been analyzed. Here are your results:\n\n"
+    #             f"{score_details}\n\n"
+    #             f"Best regards,\n{company.username} Team"
+    #         )
+            
+    #         send_mail(
+    #             subject=subject,
+    #             message=message,
+    #             from_email=f'"{company.username} HR Team" <{company.email}>',
+    #             recipient_list=[application.user.email],
+    #             fail_silently=False,
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"Failed to send analysis email: {str(e)}")
+
+
+
+
+
+
+
+
+
+
  
 def perform_create_for_admin(application):
         print(application)
@@ -688,4 +738,7 @@ async def perform_create_async(application):
     ])
 
     return ats_result, recommendations
+ 
+ 
+ 
  

@@ -159,8 +159,32 @@ CLOUDINARY_STORAGE = {
     'CLOUD_NAME': 'dkvyfbtdl',
     'API_KEY': '441189999198461',   
     'API_SECRET': 'af5RS-cWKp_3sZqoeSNosenA6Jk', 
+    
 }   
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage',
+
+
+
+# Cloudinary SDK configuration
+CLOUDINARY = {
+    'cloud_name': 'dkvyfbtdl',
+    'api_key': '441189999198461',
+    'api_secret': 'af5RS-cWKp_3sZqoeSNosenA6Jk',
+    'folder': 'audio_interview',  # Optional: specify a folder for uploads
+}
+
+
+# AVATAR_CONFIG = {
+#     'MODEL_URL': 'https://api.readyplayer.me/v1/avatars',
+#     'ANIMATIONS': {
+#         'idle': 'idle_animation.glb',
+#         'speaking': 'speaking_animation.glb'
+#     },
+#     'TTS_SERVICE': 'elevenlabs',  # or 'aws_polly', 'google_tts'
+#     'VOICE_ID': '21m00Tcm4TlvDq8ikWAM'  # ElevenLabs voice ID
+# }
+
+
 
 AUTH_USER_MODEL = 'user.User'
 
@@ -201,3 +225,6 @@ EMAIL_HOST_PASSWORD='ejitjzurwgukrmil'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # DEFAULT_FROM_EMAIL = 'Wuzzuf <aisha75@gmail.com>'
 # SERVER_EMAIL = 'noreply@yourdomain.com'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
