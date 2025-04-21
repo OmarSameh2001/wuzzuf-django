@@ -89,6 +89,7 @@ class User(AbstractUser):
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     accounts = models.JSONField(default=dict)
+    password_reset_requests = models.JSONField(default=list, blank=True)  # List of timestamps
 
     # OTP Verification Fields
     otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code

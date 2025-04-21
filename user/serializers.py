@@ -7,6 +7,8 @@ from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
+from datetime import timedelta
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -169,29 +171,38 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        """Ensure the email exists in the database"""
-        if not User.objects.filter(email=value).exists():
+        """Ensure the email exists in the database and limit to 2 requests per day"""
+        try:
+            user = User.objects.get(email=value)
+        except User.DoesNotExist:
             raise serializers.ValidationError("User with this email does not exist.")
+
+        now = timezone.now()
+        # Clean old entries older than 24 hours
+        user.password_reset_requests = [
+            ts for ts in user.password_reset_requests
+            if timezone.datetime.fromisoformat(ts).date() == now.date()
+        ]
+
+        if len(user.password_reset_requests) >= 2:
+            raise serializers.ValidationError("You have reached the daily limit for password reset requests. Try again tomorrow.")
+
         return value
 
     def send_password_reset_email(self):
         """Generate token and send reset email"""
         email = self.validated_data["email"]
         user = User.objects.get(email=email)
-        token = default_token_generator.make_token(user)
 
-        # Generate a password reset link
+        token = default_token_generator.make_token(user)
         reset_url = f"http://localhost:5173/reset-password/{user.email}"
 
-         # Email content
         email_body = (
             "You requested a password reset.\n\n"
             "Please visit the following page to reset your password:\n\n"
             f"{reset_url}\n\n"
         )
 
-
-        # Send email
         send_mail(
             subject="Password Reset Request",
             message=email_body,
@@ -199,6 +210,11 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             recipient_list=[email],
             fail_silently=False,
         )
+
+        # Add timestamp after successful send
+        user.password_reset_requests.append(timezone.now().isoformat())
+        user.save()
+
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
