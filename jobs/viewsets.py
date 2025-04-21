@@ -31,6 +31,20 @@ class JobsViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = JobFilter
     pagination_class = JobPagination
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Get the ordering query parameter (if any)
+        ordering = self.request.query_params.get('ordering', None)
+
+        if ordering:
+            queryset = queryset.order_by(ordering)
+        else:
+            queryset = queryset.order_by(*self.ordering)
+
+        return queryset
     
     
     def get_serializer_context(self):

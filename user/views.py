@@ -1,19 +1,21 @@
 from django.contrib.auth import get_user_model
 from rest_framework import generics, viewsets, filters, status
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly,IsAdminUser
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.schemas.openapi import AutoSchema
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
+from datetime import timedelta
+
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
-from .filters import JobseekerFilter
+from .filters import JobseekerFilter, CompanyFilter
 from rest_framework import status
 from .utils import send_otp_email
-from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer
+from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer
 from .models import Company, Jobseeker, Itian
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
@@ -25,8 +27,171 @@ from rest_framework.exceptions import ValidationError
 
 from .filters import JobseekerFilter
 from rest_framework.decorators import action
+from django.db.models import Q
+from django.utils import timezone
+
+import csv
+from io import StringIO
+import pandas as pd
+from django.core.validators import EmailValidator
+from .models import validate_egyptian_national_id
+from rest_framework.filters import SearchFilter
+
 
 User = get_user_model()
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    # permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['email', 'name', 'user_type']
+    parser_classes = [MultiPartParser, FormParser]
+
+    @action(detail=False, methods=['get'])
+    def company(self, request):
+        queryset = Company.objects.filter(is_verified=False, is_active=True)
+        search = request.query_params.get('search', None)
+        filterset = CompanyFilter(request.query_params, queryset=queryset)
+        page_size = request.query_params.get('page_size', 10)
+        page = request.query_params.get('page', 1)
+
+        # Filter by email or name if a search term is provided
+        if search:
+            queryset = queryset.filter(
+                Q(email__icontains=search) | Q(name__icontains=search)
+            )
+        else:
+            companies = Company.objects.all()
+
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        result_page = paginator.paginate_queryset(queryset, request)
+
+        serializer = CompanyProfileSerializer(result_page, many=True)
+
+
+        return paginator.get_paginated_response(serializer.data)
+
+
+    @action(detail=False, methods=['patch'])
+    def verify_company(self, request):
+        id = request.query_params.get('id')
+        company = Company.objects.filter(id=id).first()
+
+        print("company", id)
+        if not company:
+            return Response({"message": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        company.is_verified = True
+        company.save()
+        return Response({"message": "Company verified successfully"})
+    
+    @action(detail=False, methods=['get'])
+    def itian(self, request):
+        search = request.query_params.get('search', '')
+        page_size = int(request.query_params.get('page_size', 10))
+        page = int(request.query_params.get('page', 1))
+        
+        # Filter by email or national_id if a search term is provided
+        if search:
+            itians = Itian.objects.filter(
+                Q(email__icontains=search) | Q(national_id__icontains=search)
+            )
+        else:
+            itians = Itian.objects.all()
+
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        result_page = paginator.paginate_queryset(itians, request)
+        serializer = ItianSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def create_itian(self, request):
+        file = request.FILES.get('file', None)
+        print("file", file)
+        if not file:
+            email = request.data.get('email')
+            national_id = request.data.get('national_id')
+            if not email or not national_id:
+                return Response({"error": "Email and national_id are required"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Validate email format
+                EmailValidator()(email)
+                validate_egyptian_national_id(str(national_id))
+                if User.objects.filter(email=email).exists():
+                    return Response({"error": f"User {email} already exists."}, status=status.HTTP_400_BAD_REQUEST)
+                if Itian.objects.filter(email=email, national_id=national_id).exists():
+                    return Response({"error": f"User {email} already exists."}, status=status.HTTP_400_BAD_REQUEST)
+                Itian.objects.create(
+                    email=email,
+                    national_id=national_id,
+                )
+                return Response({"message": f"User {email} created successfully."}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({"error": f"Error creating user {email}: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            file_name = file.name
+            try:
+                if file_name.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(file)
+                elif file_name.endswith('.csv'):
+                    try:
+                        df = pd.read_csv(file, encoding='utf-8', on_bad_lines='skip')
+                    except UnicodeDecodeError:
+                        try:
+                            df = pd.read_csv(file, encoding='ISO-8859-1', on_bad_lines='skip')
+                        except UnicodeDecodeError:
+                            df = pd.read_csv(file, encoding='Windows-1252', on_bad_lines='skip')
+                else:
+                    return Response({"error": 'Unsupported file format. Please upload a CSV or Excel file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                if 'email' not in df.columns or 'national_id' not in df.columns:
+                    return Response({"error": 'File must contain "email" and "national_id" columns'}, status=status.HTTP_400_BAD_REQUEST)
+
+                num = 0
+                bad = 0
+                for index, row in df.iterrows():
+                    email = row['email']
+                    national_id = row['national_id']
+                    try:
+                        # Validate email format
+                        EmailValidator()(email)
+                        validate_egyptian_national_id(str(national_id))
+                        if Itian.objects.filter(email=email, national_id=national_id).exists():
+                            bad += 1
+                            continue
+
+                        Itian.objects.create(
+                            email=email,
+                            national_id=national_id,
+                        )
+                        num += 1
+                    except Exception as e:
+                        print({"error": f"Error creating user {email}: {e}"})
+                        bad += 1
+                        continue
+
+                if num > 0: 
+                    if bad > 0:
+                        return Response({"message": f"Successfully created {num} users. {bad} users failed."}, status=status.HTTP_201_CREATED)
+                    return Response({"message": f"Successfully created {num} users."}, status=status.HTTP_201_CREATED)
+                elif bad > 0:
+                    return Response({"message": f"{bad} users failed validation."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"message": "No new users created."}, status=status.HTTP_200_OK)
+
+            except Exception as e:
+                return Response({"error": f"Error processing file: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['delete'])
+    def delete_itian(self, request):
+        id = request.query_params.get('id')
+        itian = Itian.objects.filter(id=id).first()
+        if not itian:
+            return Response({"message": "Itian not found"}, status=status.HTTP_404_NOT_FOUND)
+        itian.delete()  
+        return Response({"message": "Itian deleted successfully"})
 
 
 class UserCreateView(generics.CreateAPIView):
@@ -56,6 +221,7 @@ class UserCreateView(generics.CreateAPIView):
 
         if otp:  # Ensure OTP is valid before saving
             user.otp_digit = otp
+            user.otp_created_at = timezone.now()
             user.save()
             print(f"Saved OTP for {user.email}: {user.otp_digit}")
 
@@ -72,6 +238,41 @@ class UserCreateView(generics.CreateAPIView):
         # user.otp_digit = otp
         # user.save()
 
+class ResendOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")  # Assuming the user provides the email for resend
+
+        if not email:
+            raise ValidationError({"error": "Email is required"})
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise ValidationError({"error": "User with this email does not exist"})
+
+        # You can add logic to check OTP expiration, if needed
+        if user.otp_created_at and (timezone.now() - user.otp_created_at).total_seconds() < 30:  # OTP expiry check, 5 minutes
+            raise ValidationError({"error": "OTP has already been sent recently. Please wait before requesting again."})
+
+        # Send new OTP
+        otp = self.send_otp(user.email)
+
+        if otp:  # If OTP is successfully generated
+            user.otp_digit = otp
+            user.otp_created_at = timezone.now()
+            user.save()
+
+            return Response({"message": "OTP resent successfully. Check your email for the new OTP."}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Failed to resend OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def send_otp(self, email):
+        otp = send_otp_email(email)
+        if otp is None:
+            print(f"OTP sending failed for {email}")
+            return None
+        return otp  # Return OTP to be saved
+
 class DynamicUserSchema(AutoSchema):
     def get_serializer(self, path, method):
         view = self.view
@@ -84,9 +285,10 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.all()
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticated]
-    schema = DynamicUserSchema() 
+    # schema = DynamicUserSchema() 
 
     def get_object(self):
+        # print("self.request.user", self.request.user.img)
         return self.request.user
 
     def get_serializer_class(self):
@@ -116,7 +318,10 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
-        data = request.data.copy() if not isinstance(request.data, dict) else request.data
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if data.get('national_id') == '':
+            data['national_id'] = None
+
 
         try:
             # Handle image uploads
@@ -206,7 +411,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         # if 'logo' in request.FILES:
         #     logo_upload = upload(request.FILES['logo'])
         #     data['logo'] = logo_upload['secure_url']   
-
+        print("data", data['img'])
         serializer = self.get_serializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -243,10 +448,10 @@ class VerifyOTPView(APIView):
     # permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        request_body=OTPVerificationSerializer,  # Automatically pulls from serializer
+        request_body=OTPVerificationSerializer,
         responses={
             status.HTTP_200_OK: openapi.Response('OTP verified successfully!'),
-            status.HTTP_400_BAD_REQUEST: openapi.Response('Invalid OTP'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('Invalid OTP or expired'),
             status.HTTP_404_NOT_FOUND: openapi.Response('User not found')
         }
     )
@@ -255,24 +460,36 @@ class VerifyOTPView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             otp = serializer.validated_data['otp']
-            print(email, otp)  # Check if this prints now
+            print(email, otp)  # Debugging
 
             try:
                 user = User.objects.get(email=email)
-                if user.otp_digit == otp:
-                    user.verify_status = True
-                    user.is_active = True  # Activate user account
-                    # user.otp_digit = None  # Clear OTP after successful verification
-                    user.save()
-                    return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
-                else:
-                    return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
-
             except User.DoesNotExist:
-                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Debugging part - print the serializer errors
-        print(serializer.errors)
+            # Check if OTP exists and matches
+            if user.otp_digit != otp:
+               raise ValidationError({"error": "Invalid OTP"})
+        
+            # Check if OTP data exists
+            if not user.otp_digit or not user.otp_created_at:
+                return Response({"error": "No OTP found. Please request again."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check OTP expiration (30 seconds)
+            if timezone.now() > user.otp_created_at + timedelta(seconds=30):
+                return Response({"error": "OTP expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Match the OTP
+            if user.otp_digit == otp:
+                user.verify_status = True
+                user.is_active = True  # Activate user account
+                # user.otp_digit = None  # Optional: clear OTP after success
+                user.save()
+                return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+        print(serializer.errors)  # Debug
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -338,37 +555,51 @@ class CustomAuthToken(ObtainAuthToken):
         serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
-        print("user", user.id)
-        print("user", user.user_type)
 
+        # Check if user is active before proceeding
+        if not user.is_active:
+            return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check for OTP verification status (for Jobseeker)
         if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
             return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Create or get the authentication token
         token, _ = Token.objects.get_or_create(user=user)
 
+        # Create response data
         user_data = {
             "token": token.key,
             "id": user.id,
             "user_type": user.user_type,
             "email": user.email,
             "name": user.name,
-            # "img": user.img,
             "location": user.location,
             "phone_number": user.phone_number,
         }
 
-        # Add extra fields for Jobseekers
+        if not user.is_active:
+            print("User is not active")
+            return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
+            print("Jobseeker OTP not verified")
+            return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        # Check if the user is a superuser and update the user_type
+        if user.is_superuser:
+            user_data.update({"user_type": "admin"})
+
+        # Add extra fields based on user type
         if user.user_type == User.UserType.JOBSEEKER:
             user_data.update({
                 "dob": user.dob,
                 "education": user.education,
                 "experience": user.experience,
-                # "cv": user.cv,
                 "keywords": user.keywords,
                 "skills": user.skills,
             })
-
-        # Add extra fields for Companies
         elif user.user_type == User.UserType.COMPANY:
             user_data.update({
                 "est": user.est,
@@ -376,4 +607,5 @@ class CustomAuthToken(ObtainAuthToken):
             })
 
         return Response(user_data)
+
 

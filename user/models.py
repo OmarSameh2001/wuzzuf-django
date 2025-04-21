@@ -47,6 +47,8 @@ class User(AbstractUser):
     class UserType(models.TextChoices):
         JOBSEEKER = "JOBSEEKER", "Jobseeker"
         COMPANY = "COMPANY", "Company"
+        ADMIN = "ADMIN", "Admin"
+
 
     #shared fields
     id = models.AutoField(primary_key=True)
@@ -61,6 +63,7 @@ class User(AbstractUser):
         validators=[EmailValidator(message="Enter a valid email address")],
     )
     name = models.CharField(
+        blank=True, null=True,
         max_length=255,
         validators=[
             RegexValidator(
@@ -85,9 +88,12 @@ class User(AbstractUser):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    accounts = models.JSONField(default=dict)
+    password_reset_requests = models.JSONField(default=list, blank=True)  # List of timestamps
 
     # OTP Verification Fields
     otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code
+    otp_created_at = models.DateTimeField(null=True, blank=True) #otp resend after 30 seconds
     verify_status = models.BooleanField(default=False)  # False until verified
     is_active = models.BooleanField(default=False)  # False until verified
 
@@ -111,7 +117,14 @@ class User(AbstractUser):
     #company fields
     est = models.DateField(null=True, blank=True)
     industry = models.CharField(max_length=100, null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
     # logo = CloudinaryField('image', null=True, blank=True)
+    username = models.CharField(
+        max_length=150,
+        unique=True,  
+        null=True,
+        blank=True
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username", "name"]
 

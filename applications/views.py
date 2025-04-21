@@ -109,160 +109,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         # print("Updated object:", instance)
         return super().update(request, *args, **kwargs)
         
-
-          
-
-
-    # @action(detail=True, methods=["patch"])
-    # def update_status(self, request, pk=None):
-    #     """Updates application status and sends an email based on success/failure."""
-    #     print(f"Incoming request data: {request.data}")  # Debugging
-        
-    #     try:
-    #         application = Application.objects.get(pk=pk)
-    #         new_status = request.data.get("status")
-    #         fail = request.data.get("fail", False)
-
-    #         # Ensure status is valid
-    #         if new_status is None:
-    #             return Response({"error": "Status is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #         new_status = int(new_status)  # Convert status to integer
-    #         if isinstance(fail, str):
-    #             fail = fail.lower() == "true"  # Convert fail flag to boolean
-
-    #         # Update application
-    #         application.status = new_status
-    #         application.fail = fail
-    #         application.save()
-
-    #         # Email content
-    #         if fail:
-    #             subject = "Application Update: Rejection"
-    #             message = (
-    #                 f"Dear {application.user.username},\n\n"
-    #                 "We regret to inform you that your application has been rejected.\n\n"
-    #                 "Best regards,\nCompany Team"
-    #             )
-    #         else:
-    #             subject = f"Application Update: {self.STATUS_MAP.get(new_status, 'Status Updated')}"
-    #             message = (
-    #                 f"Dear {application.user.username},\n\n"
-    #                 f"Your application status has been updated to: {self.STATUS_MAP.get(new_status, 'Updated')}.\n\n"
-    #                 "Best regards,\nCompany Team"
-    #             )
-
-    #         # Attempt to send email
-    #         try:
-    #             send_mail(
-    #                 subject,
-    #                 message,
-    #                 "aishaamr63@gmail.com",  # Replace with actual sender email
-    #                 [application.user.email],
-    #                 fail_silently=False,
-    #             )
-    #         except Exception as e:
-    #             logger.error(f"Failed to send email to {application.user.email}: {e}")
-    #             return Response(
-    #                 {
-    #                     "message": "Application status updated, but email failed to send",
-    #                     "status": application.status,
-    #                     "failed": fail,
-    #                 },
-    #                 status=status.HTTP_200_OK
-    #             )
-
-    #         # If everything is successful, return success response
-    #         return Response(
-    #             {
-    #                 "message": "Application status updated successfully",
-    #                 "status": application.status,
-    #                 "failed": fail,
-    #             },
-    #             status=status.HTTP_200_OK
-    #         )
-
-    #     except Application.DoesNotExist:
-    #         return Response({"error": "Application not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-    #     except (ValueError, TypeError):
-    #         return Response({"error": "Invalid status value"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     except Exception as e:
-    #         logger.error(f"Unexpected error: {e}")
-    #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # @action(detail=True, methods=["patch"])
-    # def schedule_interview(self, request, pk=None):
-    #     application = self.get_object()
-    #     interview_time_str = request.data.get("interview_time")
-    #     interview_link = request.data.get("interview_link")
-    #     interview_phase = request.data.get("phase")
-
-    #     if not interview_time_str or not interview_link or not isinstance(interview_phase, int):
-    #         return Response({"error": "Missing or invalid interview details"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     try:
-    #         interview_time = make_aware(datetime.datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
-    #     except ValueError:
-    #         return Response({"error": "Invalid date format, expected YYYY-MM-DD HH:MM"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     interview_types = {
-    #         3: "Technical Assessment",
-    #         4: "Technical Interview",
-    #         5: "HR Interview",
-    #         6: "Offer Interview"
-    #     }
-
-    #     if interview_phase not in interview_types:
-    #         return Response({"error": "Invalid interview phase"}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     if interview_phase == 3:
-    #         application.interview_time = interview_time
-    #         application.interview_link = interview_link
-    #     elif interview_phase == 4:
-    #         application.hr_time = interview_time
-    #         application.hr_link = interview_link
-    #     elif interview_phase == 5:
-    #         application.offer_time = interview_time
-    #         application.offer_link = interview_link
-
-    #     application.save()
-
-    #     subject = f"Your {interview_types[interview_phase]} is Scheduled"
-    #     message = (f"Dear {application.user.username},\n\n"
-    #                f"Your {interview_types[interview_phase]} is scheduled for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
-    #                f"Meeting Link: {interview_link}\n\n"
-    #                f"Best regards,\nCompany Team")
-
-    #     try:
-    #         send_mail(
-    #             subject,
-    #             message,
-    #             "aishaamr63@gmail.com",
-    #             [application.user.email],
-    #             fail_silently=False,
-    #         )
-    #     except Exception as e:
-    #         logger.error(f"Failed to send interview email to {application.user.email}: {e}")
-    #         print(f"Failed to send interview email to {application.user.email}: {e}")
-    #         # return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    #     return Response({"message": f"{interview_types[interview_phase]} scheduled successfully"}, status=status.HTTP_200_OK)
-    # @action(methods=["patch"], detail=True)
-    # def set_assessment_link(self, request, pk=None):
-    #     """Updates application with new assessment link"""
-    #     application = self.get_object()
-    #     assessment_link = request.data.get("assessment_link")
-    #     if assessment_link is None:
-    #         return Response({"error": "Assessment link is required"}, status=status.HTTP_400_BAD_REQUEST)
-    #     application.assessment_link = assessment_link
-    #     application.save()
-    #     return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
- 
- 
- 
-    # Add this to your ApplicationViewSet in views.py
     @action(detail=False, methods=['patch'])
     def bulk_update_status(self, request):
         """Bulk update status for multiple applications"""
@@ -491,34 +337,45 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
     @action(detail=False, methods=['post'])
     def update_status_by_ats(self, request):
-        ats = int(request.data.get('ats', 0))
-        new_status = request.data.get('new_status')
-        fail = request.data.get('fail', False)
-        old_status = request.data.get('old_status')
-        company = request.data.get('company')
-        job = request.data.get('job')
+        try:
+            ats = int(request.data.get('ats', 0))
+            new_status = request.data.get('new_status')
+            fail = request.data.get('fail', False)
+            old_status = request.data.get('old_status')
+            company = request.data.get('company')
+            job = request.data.get('job')
 
-        print(ats)
-        if new_status is None:
-            return Response({'error': 'new_status is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if old_status is None:
-            return Response({'error': 'old_status is required'}, status=status.HTTP_400_BAD_REQUEST)
+            print(ats)
+            if new_status is None:
+                return Response({'error': 'new_status is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if old_status is None:
+                return Response({'error': 'old_status is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Filter applicants
-        applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company, job__id=job)
-        
-        # Update and count affected applicants
-        updated_count = applicants.update(status=new_status)
-  
-        if fail:
-            fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company, job__id=job)
-            fail_count = fail_applicants.update(fail=True)
+            try:
+                updated_count = 0
+                # Filter applicants
+                applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company, job__id=job, fail=False)
+                
+                # Update and count affected applicants
+                updated_count = applicants.update(status=new_status)
+            except Exception as e:
+                return Response({'error': f'Error updating applicants: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({
-            'message': f'{updated_count} applicants updated.',
-            'ATS': ats,
-            'new_status': new_status
-        })
+            try:
+                fail_count = 0
+                if fail:
+                    fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company, job__id=job, fail=False)
+                    fail_count = fail_applicants.update(fail=True)
+            except Exception as e:
+                return Response({'error': f'Error marking applicants as failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({
+                'message': f'{updated_count} applicants updated, {fail_count} marked as failed.',
+                'ATS': ats,
+                'new_status': new_status
+            })
+        except Exception as e:
+            return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
     @action(detail=False, methods=['post'])
     def update_status_by_csv(self, request):
         success = int(request.data.get('success', 50))
@@ -577,7 +434,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                             user__email=email, 
                             status=old_status, 
                             job__company=company,
-                            job__id =job
+                            job__id =job,
+                            fail=False
                         )
                         applicant.status = new_status
                         applicant.save()
@@ -592,7 +450,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                             user__email=email, 
                             status=old_status, 
                             job__company=company,
-                            job__id =job
+                            job__id =job,
+                            fail=False
                         )
                         applicant.fail = True
                         applicant.save()
@@ -612,6 +471,79 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': f'Error processing file: {str(e)}'}, 
                         status=status.HTTP_400_BAD_REQUEST)
+    from rest_framework.pagination import PageNumberPagination
+
+    @action(detail=False, methods=['get'])
+    def meetings(self, request):
+        page_size = request.query_params.get('page_size', 10)
+        job = request.query_params.get('job')
+        status = request.query_params.get('status')
+        date = request.query_params.get('date')
+        if date:
+            try:
+                date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not job:
+            return Response({"error": "Job ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        applications = Application.objects.filter(job=job, fail=False)
+
+        if status:
+            applications = applications.filter(status=status)
+            
+            if status == '4':
+                if date:
+                    applications = applications.filter(interview_time=date)
+                else:
+                    applications = applications.filter(interview_time__isnull=False)
+            elif status == '5':
+                if date:
+                    applications = applications.filter(hr_time=date)
+                else:
+                    applications = applications.filter(hr_time__isnull=False)
+            elif status == '6':
+                if date:
+                    applications = applications.filter(offer_time=date)
+                else:
+                    applications = applications.filter(offer_time__isnull=False)
+
+        if not applications.exists():
+            return Response({"error": "No applications found for this job and status"}, status=404)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        result_page = paginator.paginate_queryset(applications, request)
+
+        # filtered_data = []
+        # for application in result_page:
+        #     if application.status == '4':
+        #         filtered_data.append({
+        #             "id": application.id,
+        #             "status": application.status,
+        #             "interview_time": application.interview_time,
+        #             "interview_link": application.interview_link,
+        #         })
+        #     elif application.status == '5':
+        #         filtered_data.append({
+        #             "id": application.id,
+        #             "status": application.status,
+        #             "hr_time": application.hr_time,
+        #             "hr_link": application.hr_link,
+        #         })
+        #     elif application.status == '6':
+        #         filtered_data.append({
+        #             "id": application.id,
+        #             "status": application.status,
+        #             "offer_time": application.offer_time,
+        #             "offer_link": application.offer_link,
+        #         })
+            # If it's not 4, 5, or 6, do nothing (skip)
+
+        serializer = ApplicationSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
 
  
  

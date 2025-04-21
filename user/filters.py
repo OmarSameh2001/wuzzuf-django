@@ -1,5 +1,5 @@
 import django_filters
-from .models import Jobseeker
+from .models import Jobseeker, Company
 class JobseekerFilter(django_filters.FilterSet):
     id = django_filters.CharFilter(field_name="id", lookup_expr="icontains")
     name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
@@ -11,3 +11,11 @@ class JobseekerFilter(django_filters.FilterSet):
         model = Jobseeker
         fields = ['id', 'name', 'experience', 'skills', 'location']
 
+class CompanyFilter(django_filters.FilterSet):
+    id = django_filters.CharFilter(field_name="id", lookup_expr="icontains")
+    name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
+    email = django_filters.CharFilter(field_name="email", lookup_expr="icontains")
+
+    class Meta:
+        model = Company
+        fields = ['id', 'name', 'email']
