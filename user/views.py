@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.schemas.openapi import AutoSchema
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
+from datetime import timedelta
+
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
@@ -26,7 +28,7 @@ from rest_framework.exceptions import ValidationError
 from .filters import JobseekerFilter
 from rest_framework.decorators import action
 from django.db.models import Q
-
+from django.utils import timezone
 
 import csv
 from io import StringIO
@@ -219,6 +221,7 @@ class UserCreateView(generics.CreateAPIView):
 
         if otp:  # Ensure OTP is valid before saving
             user.otp_digit = otp
+            user.otp_created_at = timezone.now()
             user.save()
             print(f"Saved OTP for {user.email}: {user.otp_digit}")
 
@@ -234,6 +237,41 @@ class UserCreateView(generics.CreateAPIView):
         # user = User.objects.get(email=email)
         # user.otp_digit = otp
         # user.save()
+
+class ResendOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")  # Assuming the user provides the email for resend
+
+        if not email:
+            raise ValidationError({"error": "Email is required"})
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise ValidationError({"error": "User with this email does not exist"})
+
+        # You can add logic to check OTP expiration, if needed
+        if user.otp_created_at and (timezone.now() - user.otp_created_at).total_seconds() < 30:  # OTP expiry check, 5 minutes
+            raise ValidationError({"error": "OTP has already been sent recently. Please wait before requesting again."})
+
+        # Send new OTP
+        otp = self.send_otp(user.email)
+
+        if otp:  # If OTP is successfully generated
+            user.otp_digit = otp
+            user.otp_created_at = timezone.now()
+            user.save()
+
+            return Response({"message": "OTP resent successfully. Check your email for the new OTP."}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Failed to resend OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def send_otp(self, email):
+        otp = send_otp_email(email)
+        if otp is None:
+            print(f"OTP sending failed for {email}")
+            return None
+        return otp  # Return OTP to be saved
 
 class DynamicUserSchema(AutoSchema):
     def get_serializer(self, path, method):
@@ -409,10 +447,10 @@ class VerifyOTPView(APIView):
     # permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        request_body=OTPVerificationSerializer,  # Automatically pulls from serializer
+        request_body=OTPVerificationSerializer,
         responses={
             status.HTTP_200_OK: openapi.Response('OTP verified successfully!'),
-            status.HTTP_400_BAD_REQUEST: openapi.Response('Invalid OTP'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('Invalid OTP or expired'),
             status.HTTP_404_NOT_FOUND: openapi.Response('User not found')
         }
     )
@@ -421,24 +459,36 @@ class VerifyOTPView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             otp = serializer.validated_data['otp']
-            print(email, otp)  # Check if this prints now
+            print(email, otp)  # Debugging
 
             try:
                 user = User.objects.get(email=email)
-                if user.otp_digit == otp:
-                    user.verify_status = True
-                    user.is_active = True  # Activate user account
-                    # user.otp_digit = None  # Clear OTP after successful verification
-                    user.save()
-                    return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
-                else:
-                    return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
-
             except User.DoesNotExist:
-                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Debugging part - print the serializer errors
-        print(serializer.errors)
+            # Check if OTP exists and matches
+            if user.otp_digit != otp:
+               raise ValidationError({"error": "Invalid OTP"})
+        
+            # Check if OTP data exists
+            if not user.otp_digit or not user.otp_created_at:
+                return Response({"error": "No OTP found. Please request again."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check OTP expiration (30 seconds)
+            if timezone.now() > user.otp_created_at + timedelta(seconds=30):
+                return Response({"error": "OTP expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Match the OTP
+            if user.otp_digit == otp:
+                user.verify_status = True
+                user.is_active = True  # Activate user account
+                # user.otp_digit = None  # Optional: clear OTP after success
+                user.save()
+                return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+        print(serializer.errors)  # Debug
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 

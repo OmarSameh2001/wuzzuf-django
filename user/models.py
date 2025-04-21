@@ -92,6 +92,7 @@ class User(AbstractUser):
 
     # OTP Verification Fields
     otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code
+    otp_created_at = models.DateTimeField(null=True, blank=True) #otp resend after 30 seconds
     verify_status = models.BooleanField(default=False)  # False until verified
     is_active = models.BooleanField(default=False)  # False until verified
 
@@ -117,6 +118,12 @@ class User(AbstractUser):
     industry = models.CharField(max_length=100, null=True, blank=True)
     is_verified = models.BooleanField(default=False)
     # logo = CloudinaryField('image', null=True, blank=True)
+    username = models.CharField(
+        max_length=150,
+        unique=True,  
+        null=True,
+        blank=True
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username", "name"]
 
