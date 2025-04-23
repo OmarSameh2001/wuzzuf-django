@@ -599,7 +599,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                     applications = applications.filter(offer_time__isnull=False)
 
         if not applications.exists():
-            return Response({"error": "No applications found for this job and status"}, status=404)
+            return Response({"error": "No applications found for this job and status"}, status=400)
 
         paginator = PageNumberPagination()
         paginator.page_size = page_size
