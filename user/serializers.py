@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-from .models import Company, Jobseeker, User, Itian
+from .models import Company, Jobseeker, User, Itian, UserQuestions
 from cloudinary.uploader import upload
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
@@ -274,3 +274,7 @@ class AuthTokenSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+class UserQuestionsSerializer(serializers.Serializer):
+    class Meta:
+        model = UserQuestions
+        fields = '__all__'

@@ -236,3 +236,8 @@ class CompanyDashboard(APIView):
         if request.user.user_type == "COMPANY":
             return Response({"message": "Welcome, Company!"})
         return Response({"error": "Unauthorized"}, status=403)
+
+class UserQuestions(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_now_add=True)
+    questions = models.IntegerField(default=0)

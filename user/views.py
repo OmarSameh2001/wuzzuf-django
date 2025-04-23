@@ -15,8 +15,8 @@ from rest_framework.pagination import PageNumberPagination
 from .filters import JobseekerFilter, CompanyFilter
 from rest_framework import status
 from .utils import send_otp_email
-from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer
-from .models import Company, Jobseeker, Itian
+from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer, UserQuestionsSerializer
+from .models import Company, Jobseeker, Itian, UserQuestions
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
@@ -36,14 +36,23 @@ import pandas as pd
 from django.core.validators import EmailValidator
 from .models import validate_egyptian_national_id
 from rest_framework.filters import SearchFilter
+from dotenv import load_dotenv
+import os
+import requests
+from pymongo import MongoClient
+load_dotenv()
 
 
+FASTAPI_URL = os.getenv('FAST_API')
+client = MongoClient(os.getenv('MONGO_URI'))
+db = client['job_db']
+rag_names_collection = db["rag_names"]
 User = get_user_model()
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['email', 'name', 'user_type']
     parser_classes = [MultiPartParser, FormParser]
@@ -607,5 +616,80 @@ class CustomAuthToken(ObtainAuthToken):
             })
 
         return Response(user_data)
+
+class UserQuestionsViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class=UserQuestionsSerializer
+    queryset=UserQuestions.objects.all()
+    parser_classes = [MultiPartParser, FormParser]
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser])
+    def post_rag(self, request):
+        file = request.FILES.get('file', None)
+        if not file:
+            return Response({"message": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                url = FASTAPI_URL + "/rag"
+                response = requests.post(url, files={'pdf': file})
+                if response.status_code != 200:
+                    raise Exception(response.text)
+                return Response(response.json())
+            except Exception as e:
+                print(f"Error processing PDF: {e}")
+                return Response({"message": "PDF processing failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser])
+    def get_rag(self, request):
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+
+        try:
+            rag = list(rag_names_collection.find().sort('name', 1).skip((page - 1) * page_size).limit(page_size))
+            for item in rag:
+                item['_id'] = str(item['_id'])
+            res = {'count': rag_names_collection.count_documents({}), 'page': page, 'page_size': page_size,'results': rag}
+            return Response(res)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
+
+    @action(detail=False, methods=['delete'], permission_classes=[IsAdminUser])
+    def delete_rag(self, request):
+        try:
+            if request.data["id"]:
+                url = FASTAPI_URL + "/rag?id=" + request.data["id"]
+            elif request.data["name"]:
+                url = FASTAPI_URL + "/rag?name=" + request.data["name"]
+            else:
+                return Response({"message": "No id or name provided"}, status=status.HTTP_400_BAD_REQUEST)
+            response = requests.delete(url)
+            if response.status_code != 200:
+                raise Exception(response.text)
+            return Response(response.json())
+        except Exception as e:
+            print(f"Error processing PDF: {e}")
+            return Response({"message": "PDF processing failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'])
+    def ask_chatbot(self, request):
+        limit = UserQuestions.objects.filter(user=request.user, date__gte=timezone.now() - timedelta(days=1)).first()
+
+        if limit is not None:
+            if limit.questions > 5:
+                reset_time = limit.date + timedelta(days=1)
+                if reset_time > timezone.now():
+                    return Response({"message": f"You have reached the limit of 5 questions per day, resets on {reset_time.strftime("%Y-%m-%d %I:%M %p GMT")}"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                limit.questions += 1
+                limit.save()
+        else:
+            UserQuestions.objects.filter(user=request.user).delete()
+            new_question = UserQuestions.objects.create(user=request.user, questions=1)
+        # print(limit.questions)
+        try:
+            response = requests.post(FASTAPI_URL + "/ask_rag/?question=" + request.data["question"])
+            return Response(response.json(), status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error retriving answer": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
 
 
