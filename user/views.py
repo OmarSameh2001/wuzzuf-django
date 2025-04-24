@@ -40,6 +40,7 @@ from dotenv import load_dotenv
 import os
 import requests
 from pymongo import MongoClient
+from bson import ObjectId
 load_dotenv()
 
 
@@ -47,6 +48,7 @@ FASTAPI_URL = os.getenv('FAST_API')
 client = MongoClient(os.getenv('MONGO_URI'))
 db = client['job_db']
 rag_names_collection = db["rag_names"]
+rag_collection=db["Rag"]
 User = get_user_model()
 
 class AdminUserViewSet(viewsets.ModelViewSet):
@@ -629,6 +631,9 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
         if not file:
             return Response({"message": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
         else:
+            rag_name = rag_names_collection.find_one({"name": file.name.replace(".pdf", "")})
+            if rag_name:
+                return Response({"message": f"Pdf with this name already uploaded on {rag_name['created_at'].strftime("%Y-%m-%d %I:%M %p GMT")}"}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 url = FASTAPI_URL + "/rag"
                 response = requests.post(url, files={'pdf': file})
@@ -644,7 +649,7 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
         page_size = int(request.query_params.get('page_size', 10))
 
         try:
-            rag = list(rag_names_collection.find().sort('name', 1).skip((page - 1) * page_size).limit(page_size))
+            rag = list(rag_names_collection.find().sort('created_at', 1).skip((page - 1) * page_size).limit(page_size))
             for item in rag:
                 item['_id'] = str(item['_id'])
             res = {'count': rag_names_collection.count_documents({}), 'page': page, 'page_size': page_size,'results': rag}
@@ -655,22 +660,36 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['delete'], permission_classes=[IsAdminUser])
     def delete_rag(self, request):
         try:
-            if request.data["id"]:
-                url = FASTAPI_URL + "/rag?id=" + request.data["id"]
-            elif request.data["name"]:
-                url = FASTAPI_URL + "/rag?name=" + request.data["name"]
+            print("request.query_params",  request.query_params["id"])
+            if request.query_params.get("id"):
+                rag = rag_names_collection.find_one({"_id": ObjectId(request.query_params["id"])})
+            elif request.query_params.get("name"):
+                rag = rag_names_collection.find_one({"name": request.query_params["name"]})
             else:
                 return Response({"message": "No id or name provided"}, status=status.HTTP_400_BAD_REQUEST)
-            response = requests.delete(url)
-            if response.status_code != 200:
-                raise Exception(response.text)
-            return Response(response.json())
+            
+            if not rag:
+                return Response({"message": "Rag not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            result = rag_names_collection.delete_one({"_id": ObjectId(rag["_id"])})
+            if result.deleted_count == 0:
+                return Response({"message": "Rag not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            
+            name = rag["name"]
+            result_embed = rag_collection.delete_many({"metadata": name})
+            if result_embed.deleted_count == 0:
+                return Response({"message": "No embedded documents found for the given RAG"}, status=status.HTTP_404_NOT_FOUND)
+            
+            return Response({"message": "Rag and its embedded documents deleted successfully"})
         except Exception as e:
             print(f"Error processing PDF: {e}")
             return Response({"message": "PDF processing failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'])
     def ask_chatbot(self, request):
+        if not request.data["question"]:
+            return Response({"message": "No question provided"}, status=status.HTTP_400_BAD_REQUEST)
         limit = UserQuestions.objects.filter(user=request.user, date__gte=timezone.now() - timedelta(days=1)).first()
 
         if limit is not None:
