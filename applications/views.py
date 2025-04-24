@@ -345,7 +345,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             job = request.data.get('job')
         
 
-            print(ats)
+            # print(ats)
             if new_status is None:
                 return Response({'error': 'new_status is required'}, status=status.HTTP_400_BAD_REQUEST)
             if old_status is None:
@@ -384,9 +384,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 email_errors_fail = []
                 if fail:
                       email_errors_fail = send_bulk_application_emails(failed_apps, fail=True)
-
+            
             return Response({
-                'message': f'{len(success_apps)} applicants updated, {len(fail_count)} marked as failed.',
+                'message': f'{len(success_apps)} applicants updated, {fail_count} marked as failed.',
                 'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
             })
 

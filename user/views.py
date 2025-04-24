@@ -220,6 +220,12 @@ class UserCreateView(generics.CreateAPIView):
             else:
                 print("Itian not found")
                 raise ValidationError({"error": "Itian not found contact iti support"})
+        else:
+            if Itian.objects.filter(
+                email=serializer.validated_data['email'],
+            ).exists():
+                print("Itian found")
+                raise ValidationError({"error": "Itian graduate can't be company"})
         # Save the user first
         user = serializer.save()
 
