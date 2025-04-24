@@ -686,26 +686,35 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
             print(f"Error processing PDF: {e}")
             return Response({"message": "PDF processing failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['get'])
+    def get_quota(self, request):
+        limit = UserQuestions.objects.filter(user=request.user, date__gte=timezone.now() - timedelta(days=1)).first()
+        if limit is not None:
+            reset_time = limit.date + timedelta(days=1)
+            if reset_time > timezone.now():
+                return Response({"message": f"You have {5 -limit.questions} questions left, resets on {reset_time.strftime('%Y-%m-%d %I:%M %p GMT')}", "questions": 5-limit.questions, "date": reset_time.strftime('%Y-%m-%d %I:%M %p GMT')}, status=status.HTTP_200_OK)
+        else:
+            tomorow = timezone.now() + timedelta(days=1)
+            return Response({"message": "You have 5 questions left", "questions": 5, "date": tomorow.strftime('%Y-%m-%d %I:%M %p GMT')}, status=status.HTTP_200_OK)
+    
     @action(detail=False, methods=['post'])
     def ask_chatbot(self, request):
         if not request.data["question"]:
             return Response({"message": "No question provided"}, status=status.HTTP_400_BAD_REQUEST)
         limit = UserQuestions.objects.filter(user=request.user, date__gte=timezone.now() - timedelta(days=1)).first()
 
-        if limit is not None:
-            if limit.questions > 5:
-                reset_time = limit.date + timedelta(days=1)
-                if reset_time > timezone.now():
-                    return Response({"message": f"You have reached the limit of 5 questions per day, resets on {reset_time.strftime("%Y-%m-%d %I:%M %p GMT")}"}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                limit.questions += 1
-                limit.save()
-        else:
-            UserQuestions.objects.filter(user=request.user).delete()
-            new_question = UserQuestions.objects.create(user=request.user, questions=1)
-        # print(limit.questions)
+        if limit is not None and limit.questions > 5:
+            reset_time = limit.date + timedelta(days=1)
+            if reset_time > timezone.now():
+                return Response({"message": f"You have reached the limit of 5 questions per day, resets on {reset_time.strftime("%Y-%m-%d %I:%M %p GMT")}"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             response = requests.post(FASTAPI_URL + "/ask_rag/?question=" + request.data["question"])
+            if limit is not None and limit.questions < 5:
+                limit.questions += 1
+                limit.save()
+            else:
+                UserQuestions.objects.filter(user=request.user).delete()
+                new_question = UserQuestions.objects.create(user=request.user, questions=1)
             return Response(response.json(), status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error retriving answer": str(e)}, status=status.HTTP_400_BAD_REQUEST)
