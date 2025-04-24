@@ -8,6 +8,7 @@ from rest_framework.schemas.openapi import AutoSchema
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
 from datetime import timedelta
+from django.core.mail import send_mail
 
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -31,6 +32,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 import csv
+from rest_framework.permissions import BasePermission
 from io import StringIO
 import pandas as pd
 from django.core.validators import EmailValidator
@@ -86,13 +88,26 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['patch'])
     def verify_company(self, request):
         id = request.query_params.get('id')
-        company = Company.objects.filter(id=id).first()
+        # company = Company.objects.filter(id=id).first()
+        company = User.objects.filter(id=id, user_type='COMPANY').first()
 
         print("company", id)
+
         if not company:
             return Response({"message": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        
         company.is_verified = True
         company.save()
+
+        # Send email
+        send_mail(
+                subject="Company Verification Successful",
+                message="Your company has been verified successfully. You can now log in to your account.",
+                from_email="hebagassem911@gmail.com",
+                recipient_list=[company.email],
+                fail_silently=False,
+        )
+            
         return Response({"message": "Company verified successfully"})
     
     @action(detail=False, methods=['get'])
@@ -616,6 +631,10 @@ class CustomAuthToken(ObtainAuthToken):
             })
 
         return Response(user_data)
+    
+class IsVerifiedCompany(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.user_type == 'COMPANY' and request.user.is_verified
 
 class UserQuestionsViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]

@@ -85,7 +85,7 @@ class JobseekerAdmin(admin.ModelAdmin):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ["id", "email", "name", "est", "industry", "img"]
+    list_display = ["id", "email", "name", "est", "industry", "img", "is_verified"]
     fieldsets = (
         (
             None,

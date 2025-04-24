@@ -265,12 +265,18 @@ class AuthTokenSerializer(serializers.Serializer):
         )
         
         print(f"Validating user: {email}, {password}, {user}")
+
         if not user:
-            raise serializers.ValidationError(_('Unable to authenticate with provided credentials'), code='authorization')
+            raise serializers.ValidationError(_('Oops! Incorrect email or password. Please try again.'), code='authorization')
         
         # Check if the user is a superuser (admin)
         if user.is_superuser:
             user.user_type = 'ADMIN'
+
+        # Deny company login unless verified
+        if user.user_type == 'COMPANY' and not user.is_verified:
+            raise serializers.ValidationError(_('Your company account is pending admin verification.'), code='authorization')
+
 
         attrs['user'] = user
         return attrs

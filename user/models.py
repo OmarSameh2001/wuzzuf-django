@@ -126,6 +126,7 @@ class User(AbstractUser):
         blank=True
     )
     USERNAME_FIELD = "email"
+    is_verified = models.BooleanField(default=False)
     REQUIRED_FIELDS = ["username", "name"]
 
     def __str__(self):
