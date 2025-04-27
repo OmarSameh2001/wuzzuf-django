@@ -8,6 +8,7 @@ class ApplicationFilter(django_filters.FilterSet):
     company = django_filters.BaseInFilter(field_name="job__company", lookup_expr="in")
     company_name = django_filters.CharFilter(field_name="job__company__name", lookup_expr="icontains")
     job_title = django_filters.CharFilter(field_name="job__title", lookup_expr="icontains")
+    fail = django_filters.BooleanFilter(field_name="fail")
     
     class Meta:
         model = Application
