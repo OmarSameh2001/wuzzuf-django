@@ -411,9 +411,9 @@ class CompanyViewSet(viewsets.ModelViewSet):
     
      # Add filter backends and pagination for the get_talents action
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_class = JobseekerFilter
-    def get_object(self):
-        return self.request.user
+    # filterset_class = JobseekerFilter
+    # def get_object(self):
+    #     return self.request.user
 
     def partial_update(self, request, *args, **kwargs):
         # return super().partial_update(request, *args, **kwargs)
