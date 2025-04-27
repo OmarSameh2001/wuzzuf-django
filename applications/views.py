@@ -109,7 +109,14 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         # instance.save()    
         # print("Updated object:", instance)
         return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        application = self.get_object()
+        if application.user != self.request.user:
+            return Response({"error": "You are not the owner of this application"}, status=status.HTTP_403_FORBIDDEN)
         
+        application.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     @action(detail=False, methods=['patch'])
     def bulk_update_status(self, request):
         """Bulk update status for multiple applications"""
