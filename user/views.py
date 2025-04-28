@@ -639,7 +639,8 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
         else:
             rag_name = rag_names_collection.find_one({"name": file.name.replace(".pdf", "")})
             if rag_name:
-                return Response({"message": f"Pdf with this name already uploaded on {rag_name['created_at'].strftime("%Y-%m-%d %I:%M %p GMT")}"}, status=status.HTTP_400_BAD_REQUEST)
+                date = rag_name['created_at'].strftime('%Y-%m-%d %I:%M %p GMT')
+                return Response({"message": f"Pdf with this name already uploaded on {date}"}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 url = FASTAPI_URL + "/rag"
                 response = requests.post(url, files={'pdf': file})
@@ -712,7 +713,8 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
         if limit is not None and limit.questions > 5:
             reset_time = limit.date + timedelta(days=1)
             if reset_time > timezone.now():
-                return Response({"message": f"You have reached the limit of 5 questions per day, resets on {reset_time.strftime("%Y-%m-%d %I:%M %p GMT")}"}, status=status.HTTP_400_BAD_REQUEST)
+                date = reset_time.strftime("%Y-%m-%d %I:%M %p GMT")
+                return Response({"message": f"You have reached the limit of 5 questions per day, resets on {date}"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             response = requests.post(FASTAPI_URL + "/ask_rag/?question=" + request.data["question"])
             if limit is not None and limit.questions < 5:
