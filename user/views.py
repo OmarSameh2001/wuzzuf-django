@@ -331,6 +331,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     def get_object(self):
         return self.request.user
 
+
     def partial_update(self, request, *args, **kwargs):
             # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
@@ -453,7 +454,7 @@ class JobSeekerPagination(PageNumberPagination):
      max_page_size = 100
 
 class JobseekerListView(generics.ListAPIView):
-    queryset = Jobseeker.objects.all()
+    queryset = Jobseeker.objects.filter(is_active=True)
     serializer_class = JobseekerProfileSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
