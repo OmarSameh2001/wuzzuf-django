@@ -7,7 +7,7 @@ class JobAdmin(admin.ModelAdmin):
     ordering = ['id']
     list_display = ['id', 'title', 'description','location',  'experince', 'status', 'type_of_job', 'created_at', 'company']
     fieldsets = (
-        (None, {'fields': ('title', 'description', 'location', 'experince', 'status', 'type_of_job', 'company')}),
+        (None, {'fields': ('title', 'description', 'location', 'experince', 'status', 'type_of_job', 'company', 'specialization')}),
     )
     readonly_fields = ['created_at']  # Prevents modification
     add_fieldsets = (

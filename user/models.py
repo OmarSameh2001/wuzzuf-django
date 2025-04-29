@@ -114,6 +114,7 @@ class User(AbstractUser):
     national_id_img = CloudinaryField('image', null=True, blank=True)
     skills = models.JSONField(null=True, blank=True)
     specialization = models.CharField(max_length=100, null=True, blank=True)
+    seniority = models.CharField(max_length=100, null=True, blank=True)
 
     #company fields
     est = models.DateField(null=True, blank=True)

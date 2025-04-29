@@ -146,21 +146,24 @@ class JobsViewSet(viewsets.ModelViewSet):
 
         
         questions_data = request.data.pop('questions', [])
-        serializer = JobsSerializer(job, data=request.data, partial=partial)
-        if serializer.is_valid():
-          print("validated_data")
+        try: 
+            serializer = JobsSerializer(job, data=request.data, partial=partial)
+            if serializer.is_valid():
+                print("validated_data")
 
-        # print("instance", validated_data)
-        # print("questions data", questions_data)
-        # Delete existing questions and replace them with new ones
-        Question.objects.filter(job=job).delete()
-        if questions_data:
-            for question_data in questions_data:
-                print("question data", question_data, job)
-                question_data.pop('job', None)
-                Question.objects.create(job=job, **question_data)
+            # print("instance", validated_data)
+            # print("questions data", questions_data)
+            # Delete existing questions and replace them with new ones
+            Question.objects.filter(job=job).delete()
+            if questions_data:
+                for question_data in questions_data:
+                    print("question data", question_data, job)
+                    question_data.pop('job', None)
+                    Question.objects.create(job=job, **question_data)
 
-        updated_job = serializer.save()
+            updated_job = serializer.save()
+        except Exception as e:
+            return Response({"error": f"An error occurred while updating the job: {e}"}, status=500)
         # Sync with FastAPI
         fastapi_data = {
             "id": updated_job.id,
@@ -180,7 +183,7 @@ class JobsViewSet(viewsets.ModelViewSet):
             fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
             fastapi_response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return Response({"error": f"Failed to sync update with FastAPI: {e}"}, status=500)
+            return Response({"success": "Update successful but failed to connect to FastAPI", "error": str(e)}, status=200)
 
         return Response(serializer.data)
 
@@ -192,6 +195,10 @@ class JobsViewSet(viewsets.ModelViewSet):
         job = Job.objects.get(pk=pk)
       except Job.DoesNotExist:
         return Response({"error": "Job not found django "}, status=404)
+
+      
+      if(job.created_at + timedelta(days=1) < timezone.now()):
+        return Response({"error": "Cannot delete job more than 1 day after creation, archive it instead"}, status=400)
 
       job.delete()
 
