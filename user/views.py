@@ -24,6 +24,7 @@ from drf_yasg import openapi
 import smtplib
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework.exceptions import ValidationError
+from .helpers import extract_dob_from_national_id
 
 from .filters import JobseekerFilter
 from rest_framework.decorators import action
@@ -217,6 +218,7 @@ class UserCreateView(generics.CreateAPIView):
                 national_id=serializer.validated_data['national_id']
             ).exists():
                 print("Itian found")
+                serializer.validated_data['dob'] = extract_dob_from_national_id(serializer.validated_data['national_id'])
             else:
                 print("Itian not found")
                 raise ValidationError({"error": "Itian not found contact iti support"})
@@ -226,6 +228,7 @@ class UserCreateView(generics.CreateAPIView):
             ).exists():
                 print("Itian found")
                 raise ValidationError({"error": "Itian graduate can't be company"})
+
         # Save the user first
         user = serializer.save()
 
@@ -494,14 +497,14 @@ class VerifyOTPView(APIView):
                 return Response({"error": "No OTP found. Please request again."}, status=status.HTTP_400_BAD_REQUEST)
 
             # Check OTP expiration (30 seconds)
-            if timezone.now() > user.otp_created_at + timedelta(seconds=30):
+            if timezone.now() > user.otp_created_at + timedelta(seconds=60):
                 return Response({"error": "OTP expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
 
             # Match the OTP
             if user.otp_digit == otp:
-                # user.verify_status = True
+                user.verify_status = True
                 user.is_active = True  # Activate user account
-                # user.otp_digit = None  # Optional: clear OTP after success
+                user.otp_digit = None  # Optional: clear OTP after success
                 user.save()
                 return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
             else:
