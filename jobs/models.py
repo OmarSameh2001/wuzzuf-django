@@ -18,5 +18,6 @@ class Job(models.Model):
     limit_choices_to={'user_type': User.UserType.COMPANY},
     related_name='jobs'
     )
+    specialization = models.CharField(max_length=100, null=True, blank=True)
     def __str__(self):
         return self.title

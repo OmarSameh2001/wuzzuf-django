@@ -100,8 +100,8 @@ class User(AbstractUser):
     #jobseeker fields
     about=models.TextField(null=True, blank=True)
     dob = models.DateField(null=True, blank=True)
-    education = models.TextField(null=True, blank=True)
-    experience = models.TextField(null=True, blank=True)
+    education = models.JSONField(null=True, blank=True)
+    experience = models.JSONField(null=True, blank=True)
     cv = CloudinaryField('cv', resource_type='raw', null=True, blank=True)
     keywords = models.TextField(null=True, blank=True)
     national_id = models.CharField(
@@ -112,7 +112,8 @@ class User(AbstractUser):
         validators=[validate_egyptian_national_id],
     )
     national_id_img = CloudinaryField('image', null=True, blank=True)
-    skills = models.TextField(null=True, blank=True)
+    skills = models.JSONField(null=True, blank=True)
+    specialization = models.CharField(max_length=100, null=True, blank=True)
 
     #company fields
     est = models.DateField(null=True, blank=True)
