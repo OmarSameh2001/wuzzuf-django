@@ -112,8 +112,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         application = self.get_object()
-        if application.user != self.request.user:
-            return Response({"error": "You are not the owner of this application"}, status=status.HTTP_403_FORBIDDEN)
+        # if application.user != self.request.user:
+        #     return Response({"error": "You are not the owner of this application"}, status=status.HTTP_403_FORBIDDEN)
         
         application.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
