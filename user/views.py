@@ -230,7 +230,7 @@ class UserCreateView(generics.CreateAPIView):
         user = serializer.save()
 
         # Now send OTP email and update user with OTP
-        otp = self.send_otp(user.email)
+        otp = self.send_otp(user.email, user.name)
 
         if user.otp_digit == otp:
             print(f"Stored OTP: {user.otp_digit}, Entered OTP: {otp}")
@@ -246,8 +246,8 @@ class UserCreateView(generics.CreateAPIView):
         else:
             print(f"Failed to generate OTP for {user.email}")
 
-    def send_otp(self, email):        
-        otp = send_otp_email(email)  
+    def send_otp(self, email, name):        
+        otp = send_otp_email(email, name)  
         if otp is None:
             print(f"OTP sending failed for {email}")  # Debugging
         return otp  # Return OTP so it can be saved
@@ -576,7 +576,7 @@ class CustomAuthToken(ObtainAuthToken):
 
 
         if not user.is_verified and user.user_type == User.UserType.COMPANY:
-            return Response({"error": "Company account is not verified, please contact support."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Company account is pending verification. You will be able to access your account once the verification is complete."}, status=status.HTTP_400_BAD_REQUEST)
         # Check if user is active before proceeding
         if not user.is_active:
             return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
