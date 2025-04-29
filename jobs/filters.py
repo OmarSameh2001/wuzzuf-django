@@ -11,7 +11,8 @@ class JobFilter(django_filters.FilterSet):
     status = django_filters.CharFilter(field_name="status", lookup_expr="icontains")
     attend =django_filters.CharFilter(field_name="attend", lookup_expr="icontains")
     company_name = django_filters.BaseInFilter(field_name="company__name", lookup_expr="icontains")
+    specialization = django_filters.BaseInFilter(field_name="specialization", lookup_expr="icontains")
 
     class Meta:
         model = Job
-        fields = ['id', 'title', 'location', 'experience', 'type_of_job', 'company', 'status', 'attend']
+        fields = ['id', 'title', 'location', 'experience', 'type_of_job', 'company', 'status', 'attend', 'specialization']

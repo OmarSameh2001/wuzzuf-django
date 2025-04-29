@@ -12,7 +12,7 @@ class JobsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
      
-        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job','attend', 'location',  'status', 'created_at', 'questions']# 'questions',
+        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job','attend', 'location',  'status', 'created_at', 'questions', 'specialization']# 'questions',
 
     def get_questions(self, obj):
         return QuestionSerializer(Question.objects.filter(job=obj), many=True).data

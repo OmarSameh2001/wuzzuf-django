@@ -499,7 +499,7 @@ class VerifyOTPView(APIView):
 
             # Match the OTP
             if user.otp_digit == otp:
-                user.verify_status = True
+                # user.verify_status = True
                 user.is_active = True  # Activate user account
                 # user.otp_digit = None  # Optional: clear OTP after success
                 user.save()
@@ -574,6 +574,9 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
+
+        if not user.is_verified and user.user_type == User.UserType.COMPANY:
+            return Response({"error": "Company account is not verified, please contact support."}, status=status.HTTP_400_BAD_REQUEST)
         # Check if user is active before proceeding
         if not user.is_active:
             return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
@@ -596,13 +599,6 @@ class CustomAuthToken(ObtainAuthToken):
             "phone_number": user.phone_number,
         }
 
-        if not user.is_active:
-            print("User is not active")
-            return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
-            print("Jobseeker OTP not verified")
-            return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
 
 
         # Check if the user is a superuser and update the user_type
@@ -617,6 +613,7 @@ class CustomAuthToken(ObtainAuthToken):
                 "experience": user.experience,
                 "keywords": user.keywords,
                 "skills": user.skills,
+                "specialization": user.specialization
             })
         elif user.user_type == User.UserType.COMPANY:
             user_data.update({

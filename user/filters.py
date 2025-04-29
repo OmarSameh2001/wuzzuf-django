@@ -6,10 +6,11 @@ class JobseekerFilter(django_filters.FilterSet):
     experience = django_filters.CharFilter(field_name="experience", lookup_expr="icontains")
     skills = django_filters.CharFilter(field_name="skills", lookup_expr="icontains")
     location = django_filters.CharFilter(field_name="location", lookup_expr="icontains")
+    specialization = django_filters.CharFilter(field_name="specialization", lookup_expr="icontains")
 
     class Meta:
         model = Jobseeker
-        fields = ['id', 'name', 'experience', 'skills', 'location']
+        fields = ['id', 'name', 'experience', 'skills', 'specialization']
 
 class CompanyFilter(django_filters.FilterSet):
     id = django_filters.CharFilter(field_name="id", lookup_expr="icontains")
