@@ -61,7 +61,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-      "django.middleware.common.CommonMiddleware",
+    "django.middleware.common.CommonMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -73,6 +73,8 @@ MIDDLEWARE = [
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",  
+    'https://wuzzuf-django-production.up.railway.app',
+    'https://recruithub-three.vercel.app/'
 ]
 
 ROOT_URLCONF = "wuzzuf.urls"
