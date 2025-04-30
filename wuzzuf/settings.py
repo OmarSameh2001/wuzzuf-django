@@ -17,17 +17,10 @@ import cloudinary.api
 
 import os
 from dotenv import load_dotenv
-# from cloudinary.storage import CloudinaryStorage
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-CLOUDINARY_URL = "cloudinary://441189999198461:af5RS-cWKp_3sZqoeSNosenA6Jk@dkvyfbtdl"
-cloudinary.config( 
-  cloud_name = "dkvyfbtdl",        # your cloud name
-  api_key = "441189999198461",     # your API key
-  api_secret = "af5RS-cWKp_3sZqoeSNosenA6Jk"  # your API secret
-)
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -59,7 +52,6 @@ INSTALLED_APPS = [
     'questions',
     'applications',
     'answers',
-    #da third party app
     'cloudinary_storage',
     'cloudinary',
     "django_extensions",
@@ -109,8 +101,12 @@ WSGI_APPLICATION = "wuzzuf.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("DB_NAME"),
+        "USER": os.environ.get("DB_USER"),
+        "PASSWORD": os.environ.get("DB_PASSWORD"),
+        "HOST": os.environ.get("DB_HOST"),
+        "PORT": os.environ.get("DB_PORT"),
     }
 }
 
@@ -155,11 +151,7 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dkvyfbtdl',
-    'API_KEY': '441189999198461',   
-    'API_SECRET': 'af5RS-cWKp_3sZqoeSNosenA6Jk', 
-}   
+
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage',
 
 AUTH_USER_MODEL = 'user.User'
@@ -180,24 +172,10 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True 
 
 
-load_dotenv()
-
-CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')
-
-# AUTH_USER_MODEL = "user.User"  # Point to your User model
-# AUTHENTICATION_BACKENDS = [
-#     "accounts.backends.DualAuthenticationBackend",
-#     "django.contrib.auth.backends.ModelBackend",
-# ]
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # Example: Gmail SMTP
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'hebagassem911@gmail.com'  # Replace with your email
-EMAIL_HOST_PASSWORD = 'smue mdmk uoov zctr '  # Use App Passwords if using Gmail
-# EMAIL_HOST_USER='aishaamr63@gmail.com'
-# EMAIL_HOST_PASSWORD='ejitjzurwgukrmil'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')  # Use App Passwords if using Gmail
 DEFAULT_FROM_EMAIL = 'Recruitment Platform'
-# DEFAULT_FROM_EMAIL = 'Wuzzuf <aisha75@gmail.com>'
-# SERVER_EMAIL = 'noreply@yourdomain.com'
