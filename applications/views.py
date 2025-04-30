@@ -87,10 +87,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
     def update(self, request, *args, **kwargs):
-        # """Override update method to handle custom logic."""
-        # instance = self.get_object()
-        # res = perform_create_for_admin(instance)
-        # def update(self, request, *args, **kwargs):
         #     """Override update method to handle custom logic."""
         instance = self.get_object()
         print("instance", request.data['status'], instance.ats_res)
@@ -110,6 +106,27 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         # print("Updated object:", instance)
         return super().update(request, *args, **kwargs)
     
+    
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Handle ATS logic if status has changed
+        status = request.data.get('status')
+        if status and int(status) > 1 and instance.ats_res is None:
+            try:
+                perform_create_for_admin(instance)
+            except Exception as e:
+                logger.error(f"Error in ATS processing: {e}")
+
+        # Update instance fields
+        for field, value in request.data.items():
+            setattr(instance, field, value)
+
+        instance.save()  # This will update `updated_at`
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+        
     def destroy(self, request, *args, **kwargs):
         application = self.get_object()
         # if application.user != self.request.user:
@@ -611,32 +628,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         paginator = PageNumberPagination()
         paginator.page_size = page_size
         result_page = paginator.paginate_queryset(applications, request)
-
-        # filtered_data = []
-        # for application in result_page:
-        #     if application.status == '4':
-        #         filtered_data.append({
-        #             "id": application.id,
-        #             "status": application.status,
-        #             "interview_time": application.interview_time,
-        #             "interview_link": application.interview_link,
-        #         })
-        #     elif application.status == '5':
-        #         filtered_data.append({
-        #             "id": application.id,
-        #             "status": application.status,
-        #             "hr_time": application.hr_time,
-        #             "hr_link": application.hr_link,
-        #         })
-        #     elif application.status == '6':
-        #         filtered_data.append({
-        #             "id": application.id,
-        #             "status": application.status,
-        #             "offer_time": application.offer_time,
-        #             "offer_link": application.offer_link,
-        #         })
-            # If it's not 4, 5, or 6, do nothing (skip)
-
         serializer = ApplicationSerializer(result_page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
@@ -663,13 +654,6 @@ def perform_create_for_admin(application):
 
         if ats_response.status_code != 200:
            raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
-
-    # recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
-    # recommendation_response = requests.get(recommendation_url)
-    # recommendations = recommendation_response.json()
-
-    # if recommendation_response.status_code != 200:
-    #     raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
 
         application.ats_res = ats_result.get("match_percentage", 0)
     # recommendations_list = recommendations.get("recommendations", [])

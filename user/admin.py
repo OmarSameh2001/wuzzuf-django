@@ -77,7 +77,7 @@ class JobseekerAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("Profile", {"fields": ("education", "experience", "cv")}),
+        ("Profile", {"fields": ("education", "experience", "cv","accounts")}),
         ("National ID Details", {"fields": ("national_id", "national_id_img")}),
     )
     readonly_fields = ["last_login"]
@@ -91,7 +91,7 @@ class CompanyAdmin(admin.ModelAdmin):
             None,
             {"fields": ("email", "username", "password", "name", "phone_number")},
         ),
-        ("Company Details", {"fields": ("est", "industry", "img", "accounts")}),
+        ("Company Details", {"fields": ("est", "industry", "img", "accounts","is_verified",)}),
     )
     readonly_fields = ["last_login"]
 

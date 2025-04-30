@@ -1,6 +1,7 @@
 from django.db import models
 from jobs.models import Job
 from user.models import Jobseeker
+from django.utils import timezone
 # Create your models here.
 class Application(models.Model):
  
@@ -29,6 +30,8 @@ class Application(models.Model):
     offer_time = models.DateTimeField(blank=True, null=True)
     offer_link = models.CharField(max_length=255, blank=True, null=True)
     fail = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
          return f"{self.user.username} - {self.job.title} - {self.status}"
         #return f"{self.job.title}"
