@@ -241,28 +241,47 @@ class UserCreateView(generics.CreateAPIView):
         # Now send OTP email and update user with OTP
         otp = self.send_otp(user.email, user.name)
 
+
+        if otp is None:
+            print(f"Failed to generate OTP for {user.email}")
+            # Handle the failure case (e.g., raise error or notify user)
+            raise ValidationError({"error": "Failed to send OTP email"})
+        else:
+            print(f"OTP sent via Node.js: {otp}")
+
         if user.otp_digit == otp:
             print(f"Stored OTP: {user.otp_digit}, Entered OTP: {otp}")
 
 
-        if otp:  # Ensure OTP is valid before saving
-            user.otp_digit = otp
-            user.otp_created_at = timezone.now()
-            user.save()
-            print(f"Saved OTP for {user.email}: {user.otp_digit}")
+        # if otp:  # Ensure OTP is valid before saving
+        #     user.otp_digit = otp
+        #     user.otp_created_at = timezone.now()
+        #     user.save()
+        #     print(f"Saved OTP for {user.email}: {user.otp_digit}")
+        # else:
+        #     print(f"Failed to generate OTP for {user.email}")
 
-
-        else:
-            print(f"Failed to generate OTP for {user.email}")
+        # Ensure OTP is valid before saving
+        user.otp_digit = otp
+        user.otp_created_at = timezone.now()
+        user.save()
+        print(f"Saved OTP for {user.email}: {user.otp_digit}")
 
     def send_otp(self, email, name):        
-        otp = send_otp_email(email, name)  
-        if otp is None:
-            print(f"OTP sending failed for {email}")  # Debugging
-        return otp  # Return OTP so it can be saved
-        # user = User.objects.get(email=email)
-        # user.otp_digit = otp
-        # user.save()
+        # otp = self.send_otp(email, name)
+        # if otp is None:
+        #     print(f"OTP sending failed for {email}")  # Debugging
+        # return otp  # Return OTP so it can be saved
+        try:
+            response = requests.post("http://localhost:5000/send-otp", json={"email": email, "name": name})
+            response.raise_for_status()
+            otp = response.json().get("otp")
+            print(f"OTP sent via Node.js: {otp}")
+            return otp
+        except Exception as e:
+            print(f"Error sending OTP via Node.js: {e}")
+            return None
+
 
 class ResendOTPView(APIView):
     def post(self, request, *args, **kwargs):
