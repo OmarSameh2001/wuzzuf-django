@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+
 from rest_framework import generics, viewsets, filters, status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly,IsAdminUser
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -14,7 +16,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 from .filters import JobseekerFilter, CompanyFilter
 from rest_framework import status
-from .utils import send_otp_email
+from .utils import (send_otp_email, send_company_verification_email)
 from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer, UserQuestionsSerializer
 from .models import Company, Jobseeker, Itian, UserQuestions
 from rest_framework.decorators import api_view
@@ -90,12 +92,19 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         id = request.query_params.get('id')
         company = Company.objects.filter(id=id).first()
 
-        print("company", id)
         if not company:
             return Response({"message": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        
         company.is_verified = True
         company.save()
-        return Response({"message": "Company verified successfully"})
+
+        # Send verification email
+        email_sent = send_company_verification_email(company.email, company.name)
+
+        if email_sent:
+            return Response({"message": "Company verified successfully and email sent."})
+        else:
+            return Response({"message": "Company verified successfully but email failed to send."})
     
     @action(detail=False, methods=['get'])
     def itian(self, request):

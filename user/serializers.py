@@ -189,36 +189,51 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             if timezone.datetime.fromisoformat(ts).date() == now.date()
         ]
 
-        if len(user.password_reset_requests) >= 2:
+        if len(user.password_reset_requests) >= 3:
             raise serializers.ValidationError("You have reached the daily limit for password reset requests. Try again tomorrow.")
 
         return value
 
     def send_password_reset_email(self):
-        """Generate token and send reset email"""
-        email = self.validated_data["email"]
+        """Send the reset email with token"""
+        email = self.validated_data['email']
         user = User.objects.get(email=email)
 
         token = default_token_generator.make_token(user)
-        reset_url = f"http://localhost:5173/reset-password/{user.email}"
+        reset_url = f"http://localhost:5173/reset-password/{user.email}?token={token}"
 
-        email_body = (
-            "You requested a password reset.\n\n"
-            "Please visit the following page to reset your password:\n\n"
+        subject = 'Password Reset Request'
+        message = (
+            f"Dear {user.name},\n\n"
+            f"You requested a password reset.\n\n"
+            f"Please click the link below to reset your password:\n"
             f"{reset_url}\n\n"
+            f"If you did not request this, you can safely ignore this email.\n\n"
+            f"Best regards,\n"
+            f"RecruitHub Team"
         )
 
-        send_mail(
-            subject="Password Reset Request",
-            message=email_body,
-            from_email="hebagassem911@gmail.com",
-            recipient_list=[email],
+        sender = '"RecruitHub" <hebagassem911@gmail.com>'
+
+        print(f"Sending password reset email to {email}")
+
+        result = send_mail(
+            subject,
+            message,
+            sender,
+            [email],
             fail_silently=False,
         )
 
-        # Add timestamp after successful send
-        user.password_reset_requests.append(timezone.now().isoformat())
-        user.save()
+        if result == 1:
+            print("Email successfully sent")
+            if hasattr(user, 'password_reset_requests'):
+                user.password_reset_requests.append(timezone.now().isoformat())
+                user.save()
+            return True
+        else:
+            print("Email sending failed")
+            return False
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
