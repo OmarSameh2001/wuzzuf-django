@@ -4,3 +4,5 @@ env
 */__pycache__/
 __pycache__/
 gradEnvdb.sqlite3
+gradEnv/
+node_modeules/

@@ -16,8 +16,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 from .filters import JobseekerFilter, CompanyFilter
 from rest_framework import status
-from .utils import (send_otp_email, send_company_verification_email)
-from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, PasswordResetRequestSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer, UserQuestionsSerializer
+# from .utils import (send_otp_email, send_company_verification_email)
+from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer, UserQuestionsSerializer
 from .models import Company, Jobseeker, Itian, UserQuestions
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
@@ -98,8 +98,26 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         company.is_verified = True
         company.save()
 
-        # Send verification email
-        email_sent = send_company_verification_email(company.email, company.name)
+        # # Send verification email
+        # email_sent = send_company_verification_email(company.email, company.name)
+
+        # if email_sent:
+        #     return Response({"message": "Company verified successfully and email sent."})
+        # else:
+        #     return Response({"message": "Company verified successfully but email failed to send."})
+
+         # Inline call to Node.js mailer endpoint
+        try:
+            response = requests.post(
+                "http://localhost:5000/send-verification-email",
+                json={"email": company.email, "name": company.name}
+            )
+            response.raise_for_status()
+            print(f"Verification email sent to {company.email}")
+            email_sent = True
+        except Exception as e:
+            print(f"Error sending verification email: {e}")
+            email_sent = False
 
         if email_sent:
             return Response({"message": "Company verified successfully and email sent."})
@@ -246,20 +264,12 @@ class UserCreateView(generics.CreateAPIView):
             print(f"Failed to generate OTP for {user.email}")
             # Handle the failure case (e.g., raise error or notify user)
             raise ValidationError({"error": "Failed to send OTP email"})
-        else:
-            print(f"OTP sent via Node.js: {otp}")
-
-        if user.otp_digit == otp:
-            print(f"Stored OTP: {user.otp_digit}, Entered OTP: {otp}")
-
-
-        # if otp:  # Ensure OTP is valid before saving
-        #     user.otp_digit = otp
-        #     user.otp_created_at = timezone.now()
-        #     user.save()
-        #     print(f"Saved OTP for {user.email}: {user.otp_digit}")
+        
         # else:
-        #     print(f"Failed to generate OTP for {user.email}")
+        #     print(f"OTP sent via Node.js: {otp}")
+
+        # if user.otp_digit == otp:
+        #     print(f"Stored OTP: {user.otp_digit}, Entered OTP: {otp}")
 
         # Ensure OTP is valid before saving
         user.otp_digit = otp
@@ -268,10 +278,6 @@ class UserCreateView(generics.CreateAPIView):
         print(f"Saved OTP for {user.email}: {user.otp_digit}")
 
     def send_otp(self, email, name):        
-        # otp = self.send_otp(email, name)
-        # if otp is None:
-        #     print(f"OTP sending failed for {email}")  # Debugging
-        # return otp  # Return OTP so it can be saved
         try:
             response = requests.post("http://localhost:5000/send-otp", json={"email": email, "name": name})
             response.raise_for_status()
@@ -300,23 +306,27 @@ class ResendOTPView(APIView):
             raise ValidationError({"error": "OTP has already been sent recently. Please wait before requesting again."})
 
         # Send new OTP
-        otp = self.send_otp(user.email)
+        otp = self.send_otp(user.email, user.name)
 
-        if otp:  # If OTP is successfully generated
-            user.otp_digit = otp
-            user.otp_created_at = timezone.now()
-            user.save()
-
-            return Response({"message": "OTP resent successfully. Check your email for the new OTP."}, status=status.HTTP_200_OK)
-
-        return Response({"error": "Failed to resend OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def send_otp(self, email):
-        otp = send_otp_email(email)
         if otp is None:
-            print(f"OTP sending failed for {email}")
+            print(f"Failed to generate OTP for {user.email}")
+            raise ValidationError({"error": "Failed to send OTP email"})
+
+        user.otp_digit = otp
+        user.otp_created_at = timezone.now()
+
+        return Response({"message": "OTP resent successfully. Check your email for the new OTP."}, status=status.HTTP_200_OK)
+
+    def send_otp(self, email, name):
+        try:
+            response = requests.post("http://localhost:5000/send-otp", json={"email": email, "name": name})
+            response.raise_for_status()
+            otp = response.json().get("otp")
+            print(f"OTP sent via Node.js: {otp}")
+            return otp
+        except Exception as e:
+            print(f"Error sending OTP via Node.js: {e}")
             return None
-        return otp  # Return OTP to be saved
 
 class DynamicUserSchema(AutoSchema):
     def get_serializer(self, path, method):
@@ -505,37 +515,36 @@ class VerifyOTPView(APIView):
         serializer = OTPVerificationSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            otp = serializer.validated_data['otp']
+            otp = str(serializer.validated_data['otp'])
             print(email, otp)  # Debugging
 
             try:
                 user = User.objects.get(email=email)
             except User.DoesNotExist:
                 return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-            # Check if OTP exists and matches
-            if user.otp_digit != otp:
-               raise ValidationError({"error": "Invalid OTP"})
-        
+            
             # Check if OTP data exists
             if not user.otp_digit or not user.otp_created_at:
                 return Response({"error": "No OTP found. Please request again."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check OTP expiration (30 seconds)
-            if timezone.now() > user.otp_created_at + timedelta(seconds=30):
+            # Check OTP expiration (60 seconds)
+            if timezone.now() > user.otp_created_at + timedelta(seconds=60):
                 return Response({"error": "OTP expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+            
+             # Match the OTP (string comparison)
+            if str(user.otp_digit) != otp:
+                return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Match the OTP
-            if user.otp_digit == otp:
-                # user.verify_status = True
-                user.is_active = True  # Activate user account
-                # user.otp_digit = None  # Optional: clear OTP after success
-                user.save()
-                return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+            # If everything is valid, activate user
+            user.is_active = True
+            # user.otp_digit = None  # Optional: clear OTP
+            user.save()
+            return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
 
-        print(serializer.errors)  # Debug
+        print(serializer.errors)
+        print(f"OTP in DB: {user.otp_digit}")
+        print(f"OTP entered: {otp}")
+        print(f"Created at: {user.otp_created_at}, Now: {timezone.now()}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -543,11 +552,41 @@ class PasswordResetRequestView(APIView):
     """API View to send password reset email"""
 
     def post(self, request):
-        serializer = PasswordResetRequestSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.send_password_reset_email()
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        token = default_token_generator.make_token(user)
+        reset_url = f"http://localhost:5173/reset-password/{user.email}?token={token}"
+
+        # Send the password reset email using Node.js server
+        try:
+            response = requests.post(
+                "http://localhost:5000/send-password-reset",
+                json={
+                    "email": user.email,
+                    "name": user.name,
+                    "resetUrl": reset_url
+                }
+            )
+            response.raise_for_status()
+            print(f"Password reset email sent to {user.email}")
+
+            # Optionally record timestamp
+            if hasattr(user, 'password_reset_requests'):
+                user.password_reset_requests.append(timezone.now().isoformat())
+                user.save()
+
             return Response({"message": "Password reset email sent."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print(f"Error sending password reset email: {e}")
+            return Response({"error": "Failed to send password reset email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PasswordResetConfirmView(APIView):

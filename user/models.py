@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.core.validators import RegexValidator, EmailValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -93,7 +94,7 @@ class User(AbstractUser):
 
     # OTP Verification Fields
     otp_digit = models.CharField(max_length=6, null=True, blank=True)  # Stores OTP code
-    otp_created_at = models.DateTimeField(null=True, blank=True) #otp resend after 30 seconds
+    otp_created_at = models.DateTimeField(null=True, blank=True, default=timezone.now) #otp resend after 30 seconds
     verify_status = models.BooleanField(default=False)  # False until verified
     is_active = models.BooleanField(default=False)  # False until verified
 
