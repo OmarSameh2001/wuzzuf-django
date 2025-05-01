@@ -50,6 +50,7 @@ client = MongoClient(os.getenv('MONGO_URI'))
 db = client['job_db']
 rag_names_collection = db["rag_names"]
 rag_collection=db["Rag"]
+user_collection=db["user_cv_db"]
 User = get_user_model()
 
 class AdminUserViewSet(viewsets.ModelViewSet):
@@ -231,6 +232,9 @@ class UserCreateView(generics.CreateAPIView):
 
         # Save the user first
         user = serializer.save()
+        user_collection.insert_one(
+                {"user_id": user.id, "email": user.email} 
+            )
 
         # Now send OTP email and update user with OTP
         otp = self.send_otp(user.email)
