@@ -232,9 +232,10 @@ class UserCreateView(generics.CreateAPIView):
 
         # Save the user first
         user = serializer.save()
-        user_collection.insert_one(
-                {"user_id": user.id, "email": user.email} 
-            )
+        if user.user_type == User.UserType.JOBSEEKER:
+            user_collection.insert_one(
+                    {"user_id": user.id, "email": user.email} 
+                )
 
         # Now send OTP email and update user with OTP
         otp = self.send_otp(user.email)

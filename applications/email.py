@@ -1,44 +1,71 @@
 from django.core.mail import send_mail
 import logging
+import requests
+import threading
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 
-def send_bulk_application_emails(applications, status_text=None, fail=False):
-    email_errors = []
-    for app in applications:
-        user = app.user
-        job = app.job
-        company = job.company
-
-        if fail:
-            subject = f"Application Update for {job.title} at {company.username}"
-            message = (
-                f"Dear {user.username},\n\n"
-                f"We regret to inform you that your application for {job.title} at {company.username} "
-                f"has not passed the current stage.\n\n"
-                f"Best regards,\n{company.username} Team"
-            )
-        else:
-            subject = f"Application Update for {job.title} at {company.username}"
-            message = (
-                f"Dear {user.username},\n\n"
-                f"Your application for {job.title} at {company.username} "
-                f"has moved to the next stage: {status_text}.\n\n"
-                f"Best regards,\n{company.username} Team"
-            )
-
-        sender = f'"{company.username} HR Team" <{company.email}>'
-
+def _post_fire_and_forget(url, data):
+    def task():
         try:
-            send_mail(
-                subject,
-                message,
-                sender,
-                [user.email],
-                fail_silently=False,
-            )
+            requests.post(url, json=data)
         except Exception as e:
-            logger.error(f"Failed to send email to {user.email}: {str(e)}")
-            email_errors.append(user.email)
+            logger.error(f"Failed to send request to {url}: {e}")
+    threading.Thread(target=task).start()
 
-    return email_errors
+def send_bulk_application_emails(applications, status_text=None, fail=False):
+    application_list = []
+    if hasattr(applications, "__iter__"):
+        for application in applications:
+            application_list.append({
+                "user_email": application.user.email,
+                "user_name": application.user.name,
+                "job_title": application.job.title,
+                "company_name": application.job.company.name,
+                "company_email": application.job.company.email,
+            })
+    else:
+        application_list.append({
+            "user_email": applications.user.email,
+            "user_name": applications.user.name,
+            "job_title": applications.job.title,
+            "company_name": applications.job.company.name,
+            "company_email": applications.job.company.email,
+        })
+
+    url = os.getenv("MAIL_SERVICE") + "/send-bulk-email"
+    data = {
+        "applications": application_list,
+        "status_text": status_text,
+        "fail": fail
+    }
+    _post_fire_and_forget(url, data)
+
+def send_schedule_email(user, company, phase, link, time):
+    url = os.getenv("MAIL_SERVICE") + "/send-schedule-email"
+    data = {
+        "user_email": user.email,
+        "user_name": user.name,
+        "company_name": company.name,
+        "company_email": company.email,
+        "link": link,
+        "time": time,
+        "phase": phase
+    }
+    _post_fire_and_forget(url, data)
+
+def send_status_email(user, company, phase, link, time):
+    url = os.getenv("MAIL_SERVICE") + "/send-dynamic-email"
+    data = {
+        "user_email": user.email,
+        "user_name": user.name,
+        "company_name": company.name,
+        "company_email": company.email,
+        "link": link,
+        "time": time,
+        "phase": phase
+    }
+    _post_fire_and_forget(url, data)

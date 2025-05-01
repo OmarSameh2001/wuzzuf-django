@@ -7,6 +7,7 @@ from io import StringIO
 import pandas as pd
 from django.core.validators import EmailValidator
 from .models import validate_egyptian_national_id
+from .views import user_collection
 
 class CustomUserAdmin(UserAdmin):
     ordering = ["id"]
@@ -82,6 +83,11 @@ class JobseekerAdmin(admin.ModelAdmin):
     )
     readonly_fields = ["last_login"]
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+        if obj.user_type == User.UserType.JOBSEEKER and not change:    
+            user_collection.insert_one({"user_id": obj.id, "email": obj.email})
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):

@@ -21,7 +21,7 @@ import json
 import httpx
 import csv
 from io import StringIO
-from .email import send_bulk_application_emails
+from .email import send_bulk_application_emails, send_schedule_email
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 logger = logging.getLogger(__name__)
@@ -164,47 +164,39 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             # Bulk update
             updated_count = applications.update(status=new_status, fail=fail)
             
-            # Send emails
-            if not fail:
-                status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
-                subject = f"Application Update for {job_title} at {company.username}"
-                message_template = (
-                    f"Dear {{username}},\n\n"
-                    f"Your application for {job_title} at {company.username} "
-                    f"has moved to the next stage: {status_text}.\n\n"
-                    f"Best regards,\n{company.username} Team"
-                )
-            else:
-                subject = f"Application Update for {job_title} at {company.username}"
-                message_template = (
-                    f"Dear {{username}},\n\n"
-                    f"We regret to inform you that your application for {job_title} at {company.username} "
-                    "has not passed the current stage.\n\n"
-                    f"Best regards,\n{company.username} Team"
-                )
+            try:
+                # Send emails
+                if not fail:
+                    status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
+                    send_bulk_application_emails(applications, status_text, fail)
+                else:
+                    send_bulk_application_emails(applications, self.FAILURE_MESSAGES.get(new_status), fail=True)
+            except Exception as e:
+                logger.error(f"Email error: {str(e)}")
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
-            sender = f'"{company.username} HR Team" <{company.email}>'
-            email_errors = []
+            # sender = f'"{company.username} HR Team" <{company.email}>'
+            # email_errors = []
             
-            for app in applications:
-                try:
-                    message = message_template.format(username=app.user.username)
-                    send_mail(
-                        subject,
-                        message,
-                        sender,
-                        [app.user.email],
-                        fail_silently=False,
-                    )
-                except Exception as e:
-                    email_errors.append(f"Failed to send email to {app.user.email}: {str(e)}")
-                    logger.error(f"Email error for {app.user.email}: {str(e)}")
+            # for app in applications:
+            #     try:
+            #         message = message_template.format(username=app.user.username)
+            #         send_mail(
+            #             subject,
+            #             message,
+            #             sender,
+            #             [app.user.email],
+            #             fail_silently=False,
+            #         )
+            #     except Exception as e:
+            #         email_errors.append(f"Failed to send email to {app.user.email}: {str(e)}")
+            #         logger.error(f"Email error for {app.user.email}: {str(e)}")
             
             response_data = {
                 "message": f"Updated {updated_count} applications",
                 "status": new_status,
                 "failed": fail,
-                "email_errors": email_errors if email_errors else None
+                # "email_errors": email_errors if email_errors else None
             }
             
             return Response(response_data, status=status.HTTP_200_OK)
@@ -236,33 +228,12 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             application.fail = fail
             application.save()
 
-            if fail:
-                subject = f"Application Update from {company.username}"
-                message = (
-                    f"Dear {application.user.username},\n\n"
-                    f"We regret to inform you that your application for {application.job.title} "
-                    f"at {company.username} has been rejected.\n\n"
-                    f"Best regards,\n{company.username} Team"
-                )
-            else:
-                status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
-                subject = f"Application Update from {company.username}"
-                message = (
-                    f"Dear {application.user.username},\n\n"
-                    f"Your application for {application.job.title} at {company.username} "
-                    f"has been updated to: {status_text}.\n\n"
-                    f"Best regards,\n{company.username} Team"
-                )
-            sender = f'"{company.username} HR Team" <{company.email}>'
             try:
-                send_mail(
-                    subject,
-                    message,
-                    sender,
-                    # company.email,  # Use company's email as sender
-                    [application.user.email],
-                    fail_silently=False,
-                )
+                if fail:
+                    send_bulk_application_emails(application, fail=True)
+                else:
+                    status_text = self.STATUS_MAP.get(new_status, 'Status Updated')
+                    send_bulk_application_emails(application, status_text, fail)
             except Exception as e:
                 logger.error(f"Failed to send email: {e}")
                 return Response(
@@ -325,23 +296,24 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         application.save()
 
-        subject = f"{interview_types[interview_phase]} Invitation from {company.username}"
-        message = (
-            f"Dear {application.user.username},\n\n"
-            f"{company.username} has scheduled your {interview_types[interview_phase]} "
-            f"for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
-            f"Meeting Link: {interview_link}\n\n"
-            f"Best regards,\n{company.username} Team"
-        )
-        sender = f'"{company.username} Recruitment" <{company.email}>'
+        # subject = f"{interview_types[interview_phase]} Invitation from {company.username}"
+        # message = (
+        #     f"Dear {application.user.username},\n\n"
+        #     f"{company.username} has scheduled your {interview_types[interview_phase]} "
+        #     f"for {interview_time.strftime('%Y-%m-%d %H:%M')}.\n"
+        #     f"Meeting Link: {interview_link}\n\n"
+        #     f"Best regards,\n{company.username} Team"
+        # )
+        # sender = f'"{company.username} Recruitment" <{company.email}>'
         try:
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=sender,
-                recipient_list=[application.user.email],
-                fail_silently=False,
-            )
+            # send_mail(
+            #     subject=subject,
+            #     message=message,
+            #     from_email=sender,
+            #     recipient_list=[application.user.email],
+            #     fail_silently=False,
+            # )
+            response = send_schedule_email(application.user, company, interview_types[interview_phase], interview_link, interview_time.strftime('%Y-%m-%d %H:%M'))
         except Exception as e:
             logger.error(f"Failed to send interview email to {application.user.email}: {e}")
             print(f"Failed to send interview email to {application.user.email}: {e}")
@@ -411,7 +383,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             
             return Response({
                 'message': f'{len(success_apps)} applicants updated, {fail_count} marked as failed.',
-                'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
+                # 'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
             })
 
         except Exception as e:
@@ -498,16 +470,16 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             # fail_emails = []
 
             for _, row in df.iterrows():
-                print('email', row['email'])
-                print('score', row['score'])
+                # print('email', row['email'])
+                # print('score', row['score'])
                 email = row['email'].strip()
                 try:
                     score = float(row['score'])
                 except ValueError:
                     continue
                 
-                print("email", email)
-                print("score", score)
+                # print("email", email)
+                # print("score", score)
                 
                 try:
                     applicant = Application.objects.get(
@@ -517,7 +489,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                         job__id=job,
                         fail=False
                     )
-                    print("score>= success",score>= success)    
+                    # print("score>= success",score>= success)    
                     if score >= success:
                         applicant.status = new_status
                         applicant.save()
@@ -534,7 +506,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
          
             return Response({
                 'message': f'{len(updated_apps)} applicants updated and {len(failed_apps)} applicants marked as failed.',
-                'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
+                # 'email_errors': email_errors_success + email_errors_fail if (email_errors_success or email_errors_fail) else None
             })
 
         except Exception as e:
