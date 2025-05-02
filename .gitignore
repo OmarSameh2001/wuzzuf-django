@@ -4,3 +4,6 @@ env
 */__pycache__/
 __pycache__/
 gradEnv
+venv
+.venv
+venv/

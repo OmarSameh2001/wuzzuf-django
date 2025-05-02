@@ -19,8 +19,27 @@ import os
 from dotenv import load_dotenv
 # from cloudinary.storage import CloudinaryStorage
 
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# print(f"💡 DJANGO_SETTINGS_MODULE = {os.getenv('DJANGO_SETTINGS_MODULE')}")
+
+# SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG = True
+ALLOWED_HOSTS = ['*']
+DEBUG = True
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# print("✅ SETTINGS FILE LOADED")
+
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# print("✅ ALLOWED_HOSTS =", ALLOWED_HOSTS)
+# print("DEBUG =", DEBUG)
+# print("ALLOWED_HOSTS =", ALLOWED_HOSTS)
+# DEBUG = False
+
 CLOUDINARY_URL = "cloudinary://441189999198461:af5RS-cWKp_3sZqoeSNosenA6Jk@dkvyfbtdl"
 cloudinary.config( 
   cloud_name = "dkvyfbtdl",        # your cloud name
@@ -35,10 +54,6 @@ cloudinary.config(
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-#&wz@pct4d8374i2e_hm19!-so-_4e7+#l=6()ty^faiuipj@q"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -180,7 +195,7 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True 
 
 
-load_dotenv()
+
 
 CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')
 
@@ -201,3 +216,7 @@ EMAIL_HOST_PASSWORD = 'smue mdmk uoov zctr '  # Use App Passwords if using Gmail
 DEFAULT_FROM_EMAIL = 'Recruitment Platform'
 # DEFAULT_FROM_EMAIL = 'Wuzzuf <aisha75@gmail.com>'
 # SERVER_EMAIL = 'noreply@yourdomain.com'
+
+
+
+
