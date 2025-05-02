@@ -1,6 +1,9 @@
+gradEnv/
+node_modeules/
 .env
 env
 **/__pycache__/
 */__pycache__/
 __pycache__/
-gradEnv
+gradEnvdb.sqlite3
+
