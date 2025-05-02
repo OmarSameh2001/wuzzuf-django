@@ -240,6 +240,13 @@ class UserCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         print("serializer.validated_data", serializer.validated_data)
+
+        user_type = serializer.validated_data.get('user_type')
+        
+        # Block admin registration
+        if user_type == User.UserType.ADMIN:
+            raise ValidationError({"error": "Admin registration is not allowed through this view."})
+
         if serializer.validated_data['user_type'] == User.UserType.JOBSEEKER:
             if Itian.objects.filter(
                 email=serializer.validated_data['email'],
@@ -285,7 +292,7 @@ class UserCreateView(generics.CreateAPIView):
         user.save()
         print(f"Saved OTP for {user.email}: {user.otp_digit}")
 
-    def send_otp(self, email, name):        
+    def send_otp(self, email, name):                
         try:
             response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name})
             response.raise_for_status()
@@ -322,6 +329,7 @@ class ResendOTPView(APIView):
 
         user.otp_digit = otp
         user.otp_created_at = timezone.now()
+        user.save()
 
         return Response({"message": "OTP resent successfully. Check your email for the new OTP."}, status=status.HTTP_200_OK)
 
