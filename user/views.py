@@ -111,7 +111,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
          # Inline call to Node.js mailer endpoint
         try:
             response = requests.post(
-                "http://localhost:5000/send-verification-email",
+                os.getenv('MAIL_SERVICE') + "send-verification-email",
                 json={"email": company.email, "name": company.name}
             )
             response.raise_for_status()
@@ -287,7 +287,7 @@ class UserCreateView(generics.CreateAPIView):
 
     def send_otp(self, email, name):        
         try:
-            response = requests.post("http://localhost:5000/send-otp", json={"email": email, "name": name})
+            response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name})
             response.raise_for_status()
             otp = response.json().get("otp")
             print(f"OTP sent via Node.js: {otp}")
@@ -327,7 +327,7 @@ class ResendOTPView(APIView):
 
     def send_otp(self, email, name):
         try:
-            response = requests.post("http://localhost:5000/send-otp", json={"email": email, "name": name})
+            response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name})
             response.raise_for_status()
             otp = response.json().get("otp")
             print(f"OTP sent via Node.js: {otp}")
@@ -545,6 +545,7 @@ class VerifyOTPView(APIView):
 
             # If everything is valid, activate user
             user.is_active = True
+            user.verify_status = True
             # user.otp_digit = None  # Optional: clear OTP
             user.save()
             return Response({'message': 'OTP verified successfully!'}, status=status.HTTP_200_OK)
@@ -575,7 +576,7 @@ class PasswordResetRequestView(APIView):
         # Send the password reset email using Node.js server
         try:
             response = requests.post(
-                "http://localhost:5000/send-password-reset",
+                os.getenv('MAIL_SERVICE') + "send-password-reset",
                 json={
                     "email": user.email,
                     "name": user.name,
@@ -649,16 +650,17 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
 
-
-        if not user.is_verified and user.user_type == User.UserType.COMPANY:
-            return Response({"error": "Company account is pending verification. You will be able to access your account once the verification is complete."}, status=status.HTTP_400_BAD_REQUEST)
-        # Check if user is active before proceeding
+                # Check if user is active before proceeding
         if not user.is_active:
             return Response({"error": "User is not active"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check for OTP verification status (for Jobseeker)
-        if not user.verify_status and user.user_type == User.UserType.JOBSEEKER:
-            return Response({"error": "Please verify your OTP before logging in."}, status=status.HTTP_400_BAD_REQUEST)
+        # # Check for OTP verification status
+        # if not user.verify_status:
+        #     return Response({"error": "Please verify your OTP before logging in.", "otp": True}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        if not user.is_verified and user.user_type == User.UserType.COMPANY:
+            return Response({"error": "Company account is pending verification. You will be able to access your account once the verification is complete."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Create or get the authentication token
         token, _ = Token.objects.get_or_create(user=user)
