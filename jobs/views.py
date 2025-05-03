@@ -10,8 +10,11 @@ from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from .models import Job
 User = get_user_model()
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-FASTAPI_URL = "http://127.0.0.1:8001"
+FASTAPI_URL = os.environ.get("FAST_API")
 
 # def get_recommendationsView(request , user_id ,):
 #     #user_skills = request.GET.get('user_skills', '')

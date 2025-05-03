@@ -25,10 +25,12 @@ from .email import send_bulk_application_emails, send_schedule_email
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 logger = logging.getLogger(__name__)
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
-
-FASTAPI_URL = "http://127.0.0.1:8001" 
+FASTAPI_URL = os.environ.get("FAST_API") 
 
 class CustomPagination(PageNumberPagination):
      page_size = 5  # Adjust as needed

@@ -2,7 +2,12 @@ from django.contrib import admin
 from .models import Job
 from user.models import Company
 import requests
-FASTAPI_URL = "http://127.0.0.1:8001/jobs"
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+
+FASTAPI_URL = os.environ.get("FAST_API")
 class JobAdmin(admin.ModelAdmin):
     ordering = ['id']
     list_display = ['id', 'title', 'description','location',  'experince', 'status', 'type_of_job', 'created_at', 'company']

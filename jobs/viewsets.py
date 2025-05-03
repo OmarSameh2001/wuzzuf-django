@@ -15,9 +15,11 @@ from rest_framework import serializers
 from questions.models import Question
 from user.models import Company
 from django.db.models import Count, Case, When, IntegerField
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-
-FASTAPI_URL = "http://127.0.0.1:8001/jobs"
+FASTAPI_URL = os.environ.get("FAST_API")
 class JobPagination(PageNumberPagination):
      page_size = 5  # Adjust as needed
      page_size_query_param = 'page_size'
