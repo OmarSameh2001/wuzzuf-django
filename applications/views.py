@@ -21,7 +21,7 @@ import json
 import httpx
 import csv
 from io import StringIO
-from .email import send_bulk_application_emails, send_schedule_email
+from .email import send_bulk_application_emails, send_schedule_email, send_contract
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 logger = logging.getLogger(__name__)
@@ -604,6 +604,21 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         result_page = paginator.paginate_queryset(applications, request)
         serializer = ApplicationSerializer(result_page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def set_contract(self, request):
+        application = request.query_params.get('application')
+        application = Application.objects.get(id=application)
+        if not application:
+            return Response({"error": "No applications found for this job and status"}, status=400)
+
+        application.salary = request.data.get('salary')
+        application.insurance = request.data.get('insurance')
+        application.termination = request.data.get('termination')
+        application.save()
+        print(application)
+        send_contract(application)
+        return Response({"message": "Contract set successfully"})
 
 
  

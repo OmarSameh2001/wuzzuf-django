@@ -91,7 +91,6 @@ class User(AbstractUser):
         validators=[EmailValidator(message="Enter a valid email address")],
     )
     name = models.CharField(
-        blank=True, null=True,
         max_length=255,
         validators=[
             RegexValidator(
@@ -116,7 +115,7 @@ class User(AbstractUser):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
-    accounts = models.JSONField(default=dict)
+    accounts = models.JSONField(default=dict, blank=True)
     password_reset_requests = models.JSONField(default=list, blank=True)  # List of timestamps
 
     # OTP Verification Fields

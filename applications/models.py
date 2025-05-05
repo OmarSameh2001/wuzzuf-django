@@ -32,6 +32,10 @@ class Application(models.Model):
     fail = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    salary = models.CharField(blank=True, null=True)
+    insurance = models.CharField(blank=True, null=True)
+    termination = models.CharField(blank=True, null=True)
+
     def __str__(self):
          return f"{self.user.username} - {self.job.title} - {self.status}"
         #return f"{self.job.title}"

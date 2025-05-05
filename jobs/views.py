@@ -138,3 +138,34 @@ def ats_match(request, user_id, job_id):
 
     except requests.exceptions.RequestException as e:
         return JsonResponse({"error": "FastAPI request failed", "details": str(e)}, status=500)
+def get_talentsView(request, job_id):
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 5))
+        
+        fastapi_url = f"{FASTAPI_URL}/top_talents?job_id={job_id}&page={page}&page_size={page_size}"
+        print(fastapi_url)
+        
+        try:
+            response = requests.get(fastapi_url, timeout=10)
+            # response.raise_for_status()
+            data = response.json()
+            
+            return JsonResponse({
+                "count": data.get("count", 0),
+                "results": data.get("results", [])
+            })
+            
+        except requests.exceptions.RequestException as e:
+            error_msg = f"FastAPI service error: {str(e)}"
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_detail = e.response.json().get('detail', str(e))
+                    error_msg = f"FastAPI error: {error_detail}"
+                except:
+                    error_msg = f"FastAPI error: {e.response.text}"
+            return JsonResponse({"error": error_msg}, status=500)
+            
+    except Exception as e:
+        return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
+

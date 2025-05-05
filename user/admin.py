@@ -87,7 +87,7 @@ class JobseekerAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
         if obj.user_type == User.UserType.JOBSEEKER and not change:    
-            user_collection.insert_one({"user_id": obj.id, "email": obj.email})
+            user_collection.insert_one({"user_id": obj.id, "email": obj.email, 'name': obj.name})
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):

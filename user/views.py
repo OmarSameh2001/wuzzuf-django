@@ -268,7 +268,7 @@ class UserCreateView(generics.CreateAPIView):
         user = serializer.save()
         if user.user_type == User.UserType.JOBSEEKER:
             user_collection.insert_one(
-                    {"user_id": user.id, "email": user.email} 
+                    {"user_id": user.id, "email": user.email, 'name': user.name} 
                 )
 
         # Now send OTP email and update user with OTP
@@ -791,21 +791,24 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
     def ask_chatbot(self, request):
         if not request.data["question"]:
             return Response({"message": "No question provided"}, status=status.HTTP_400_BAD_REQUEST)
-        limit = UserQuestions.objects.filter(user=request.user, date__gte=timezone.now() - timedelta(days=1)).first()
+        # limit = UserQuestions.objects.filter(user=request.user, date__gte=timezone.now() - timedelta(days=1)).first()
 
-        if limit is not None and limit.questions > 5:
-            reset_time = limit.date + timedelta(days=1)
-            if reset_time > timezone.now():
-                date = reset_time.strftime("%Y-%m-%d %I:%M %p GMT")
-                return Response({"message": f"You have reached the limit of 5 questions per day, resets on {date}"}, status=status.HTTP_400_BAD_REQUEST)
+        # if limit is not None and limit.questions > 5:
+        #     reset_time = limit.date + timedelta(days=1)
+        #     if reset_time > timezone.now():
+        #         date = reset_time.strftime("%Y-%m-%d %I:%M %p GMT")
+        #         return Response({"message": f"You have reached the limit of 5 questions per day, resets on {date}"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             response = requests.post(FASTAPI_URL + "/ask_rag/?question=" + request.data["question"])
-            if limit is not None and limit.questions < 5:
-                limit.questions += 1
-                limit.save()
-            else:
-                UserQuestions.objects.filter(user=request.user).delete()
-                new_question = UserQuestions.objects.create(user=request.user, questions=1)
+            print(response.json())
+            if not response.json()['answer']:
+                return Response({"message": "No answer provided"}, status=status.HTTP_400_BAD_REQUEST)
+            # if limit is not None and limit.questions < 5:
+            #     limit.questions += 1
+            #     limit.save()
+            # else:
+            #     UserQuestions.objects.filter(user=request.user).delete()
+            #     new_question = UserQuestions.objects.create(user=request.user, questions=1)
             return Response(response.json(), status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error retriving answer": str(e)}, status=status.HTTP_400_BAD_REQUEST)

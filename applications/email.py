@@ -69,3 +69,18 @@ def send_status_email(user, company, phase, link, time):
         "phase": phase
     }
     _post_fire_and_forget(url, data)
+def send_contract(application):
+    url = os.getenv("MAIL_SERVICE") + "/send-contract"
+    data = {
+        "user_email": application.user.email,
+        "user_name": application.user.name,
+        "job_title": application.job.title,
+        "job_attendance": application.job.attend,
+        "job_type": application.job.type_of_job,
+        "company_name": application.job.company.name,
+        "company_email": application.job.company.email,
+        'salary': application.salary,
+        'insurance': application.insurance,
+        'termination': application.termination
+    }
+    _post_fire_and_forget(url, data)
