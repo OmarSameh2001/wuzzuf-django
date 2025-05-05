@@ -8,6 +8,7 @@ import pandas as pd
 from django.core.validators import EmailValidator
 from .models import validate_egyptian_national_id
 from .views import user_collection
+from .models import Track, Branch  
 
 class CustomUserAdmin(UserAdmin):
     ordering = ["id"]
@@ -66,9 +67,21 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
 
+
+# Register Track model
+class TrackAdmin(admin.ModelAdmin):
+    list_display = ('name',)  # Adjust these fields as needed
+    search_fields = ('name',)  # Allow search by track name
+
+# Register Branch model
+class BranchAdmin(admin.ModelAdmin):
+    list_display = ('name', 'address')  # Adjust these fields as needed
+    search_fields = ('name', 'address')  # Allow search by branch name
+
+
 @admin.register(Jobseeker)
 class JobseekerAdmin(admin.ModelAdmin):
-    list_display = ["id", "email", "name", "dob", "education", "experience", "skills","cv", "img" ]
+    list_display = ["id", "email", "name", "dob", "education", "experience", "skills","cv", "img", "get_track", "get_branch", "iti_grad_year"]
     fieldsets = (
         (
             None,
@@ -82,6 +95,19 @@ class JobseekerAdmin(admin.ModelAdmin):
         ("National ID Details", {"fields": ("national_id", "national_id_img")}),
     )
     readonly_fields = ["last_login"]
+
+    def get_track(self, obj):
+        if obj.track:
+            return obj.track.name
+        return "-"
+    get_track.short_description = "Track"
+
+    def get_branch(self, obj):
+        if obj.branch:
+            return obj.branch.name
+        return "-"
+    get_branch.short_description = "Branch"
+
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
@@ -174,7 +200,10 @@ class Itian(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-# Removed duplicate registration of Itian admin class.
+
+# Register the models with the admin panel
+admin.site.register(Track, TrackAdmin)
+admin.site.register(Branch, BranchAdmin)
 admin.site.register(User, CustomUserAdmin)
 # admin.site.register(Jobseeker, JobseekerAdmin)
 # admin.site.register(Company, CompanyAdmin)

@@ -8,10 +8,16 @@ class JobseekerFilter(django_filters.FilterSet):
     location = django_filters.BaseInFilter(field_name="location", lookup_expr="in")
     specialization = django_filters.CharFilter(field_name="specialization", lookup_expr="icontains")
     seniority = django_filters.BaseInFilter(field_name="seniority", lookup_expr="in")
+    track = django_filters.NumberFilter(field_name='track__id')
+    branch = django_filters.NumberFilter(field_name='branch__id')
+    track_name = django_filters.CharFilter(field_name='track__name', lookup_expr='icontains')
+    branch_name = django_filters.CharFilter(field_name='branch__name', lookup_expr='icontains')
+    iti_grad_year = django_filters.NumberFilter(field_name="iti_grad_year")
+
 
     class Meta:
         model = Jobseeker
-        fields = ['id', 'name', 'seniority', 'skills', 'specialization']
+        fields = ['id', 'name', 'seniority', 'skills', 'specialization', 'track', 'branch', 'track_name', 'branch_name']
 
 class CompanyFilter(django_filters.FilterSet):
     id = django_filters.CharFilter(field_name="id", lookup_expr="icontains")

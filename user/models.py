@@ -69,7 +69,34 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+def year_choices():
+    current_year = datetime.date.today().year
+    return [(year, year) for year in range(1993, current_year + 1)]
 
+class Track(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class Branch(models.Model):
+    name = models.CharField(max_length=100)
+    address = models.CharField(max_length=255)
+    # phone_number = models.CharField(
+    #     null=True,
+    #     blank=True,
+    #     max_length=11,
+    #     validators=[
+    #         RegexValidator(
+    #             regex=r"^(01[0-2,5]{1}[0-9]{8})$",
+    #             message="Phone number must be a valid Egyptian number",
+    #         )
+    #     ]
+    # )
+
+    def __str__(self):
+        return self.name
 
 class User(AbstractUser):
     class UserType(models.TextChoices):
@@ -143,6 +170,14 @@ class User(AbstractUser):
     skills = models.JSONField(null=True, blank=True)
     specialization = models.CharField(max_length=100, null=True, blank=True)
     seniority = models.CharField(max_length=100, null=True, blank=True)
+    track = models.ForeignKey(Track, null=True, blank=True, on_delete=models.SET_NULL)
+    branch = models.ForeignKey(Branch, null=True, blank=True, on_delete=models.SET_NULL)
+    iti_grad_year = models.PositiveIntegerField(
+        choices=year_choices(),
+        null=True,
+        blank=True
+    )
+
 
     #company fields
     est = models.DateField(null=True, blank=True)
@@ -214,6 +249,7 @@ class Itian(models.Model):
     #     return self.email
     
 
+
 class JobseekerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'user_type': User.UserType.JOBSEEKER})
     jobseeker_id = models.IntegerField(null=True, blank=True)
@@ -237,7 +273,6 @@ def create_jobseeker_profile(sender, instance, created, **kwargs):
 def create_company_profile(sender, instance, created, **kwargs):
     if created:
         CompanyProfile.objects.create(user=instance)
-
 
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
