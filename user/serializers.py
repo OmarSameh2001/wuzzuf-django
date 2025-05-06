@@ -68,6 +68,7 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'dob', 
             'education', 
             'experience',
+            'summary',
             'accounts', 
             'cv', 
             'img', 
@@ -112,6 +113,32 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+    
+    # def validate_skills(self, value):
+    #     if not isinstance(value, list):
+    #         raise serializers.ValidationError("Skills must be a list.")
+    #     return value
+    
+    # def validate_education(self, value):
+    #     if not isinstance(value, list):
+    #         raise serializers.ValidationError("Education must be a list.")
+    #     for item in value:
+    #         if not isinstance(item, dict):
+    #             raise serializers.ValidationError("Each education entry must be a dictionary.")
+    #         if not set(item.keys()).issubset({"degree", "school", "startDate", "endDate", "fieldOfStudy"}):
+    #             raise serializers.ValidationError("Education entries must include 'degree', 'school', 'startDate', 'endDate', and 'fieldOfStudy'.")
+    #     return value
+
+    # def validate_experience(self, value):
+    #     if not isinstance(value, list):
+    #         raise serializers.ValidationError("Experience must be a list.")
+    #     for item in value:
+    #         if not isinstance(item, dict):
+    #             raise serializers.ValidationError("Each experience entry must be a dictionary.")
+    #         if not set(item.keys()).issubset({"title", "company", "startDate", "endDate"}):
+    #             raise serializers.ValidationError("Experience entries must include 'title', 'company', 'startDate', and 'endDate'.")
+    #     return value
+    
 class CompanyProfileSerializer(serializers.ModelSerializer):
     # logo=serializers.ImageField(required=False)
     class Meta:

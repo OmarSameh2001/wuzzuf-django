@@ -10,9 +10,9 @@ load_dotenv()
 FASTAPI_URL = os.environ.get("FAST_API")
 class JobAdmin(admin.ModelAdmin):
     ordering = ['id']
-    list_display = ['id', 'title', 'description','location',  'experince', 'status', 'type_of_job', 'created_at', 'company']
+    list_display = ['id', 'title', 'description','location',  'experince', 'status', 'type_of_job', 'created_at', 'company','attend', 'specialization']
     fieldsets = (
-        (None, {'fields': ('title', 'description', 'location', 'experince', 'status', 'type_of_job', 'company', 'specialization')}),
+        (None, {'fields': ('title', 'description', 'location', 'experince', 'status', 'type_of_job', 'company', 'specialization', 'attend', 'created_at')}),
     )
     readonly_fields = ['created_at']  # Prevents modification
     add_fieldsets = (

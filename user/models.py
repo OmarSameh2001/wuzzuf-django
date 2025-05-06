@@ -13,7 +13,8 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.views import APIView
 import datetime
 from cloudinary.models import CloudinaryField
-
+from django.contrib.postgres.fields import JSONField 
+from django.contrib.postgres.fields import JSONField
 
 # Custom Validator for Egyptian National ID
 def validate_egyptian_national_id(value):
@@ -129,6 +130,8 @@ class User(AbstractUser):
     dob = models.DateField(null=True, blank=True)
     education = models.JSONField(null=True, blank=True)
     experience = models.JSONField(null=True, blank=True)
+    skills = models.JSONField(null=True, blank=True)
+    summary = models.TextField(null=True, blank=True)
     cv = CloudinaryField('cv', resource_type='raw', null=True, blank=True)
     keywords = models.TextField(null=True, blank=True)
     national_id = models.CharField(
@@ -139,7 +142,6 @@ class User(AbstractUser):
         validators=[validate_egyptian_national_id],
     )
     national_id_img = CloudinaryField('image', null=True, blank=True)
-    skills = models.JSONField(null=True, blank=True)
     specialization = models.CharField(max_length=100, null=True, blank=True)
     seniority = models.CharField(max_length=100, null=True, blank=True)
 

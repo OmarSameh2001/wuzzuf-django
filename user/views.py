@@ -10,7 +10,7 @@ from rest_framework.schemas.openapi import AutoSchema
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
 from datetime import timedelta
-
+from collections import defaultdict
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
@@ -32,7 +32,7 @@ from .filters import JobseekerFilter
 from rest_framework.decorators import action
 from django.db.models import Q
 from django.utils import timezone
-
+import json
 import csv
 from io import StringIO
 import pandas as pd
@@ -44,6 +44,8 @@ from dotenv import load_dotenv
 import requests
 from pymongo import MongoClient
 from bson import ObjectId
+
+FASTAPI_URL = "http://127.0.0.1:8001"
 load_dotenv()
 
 
@@ -54,6 +56,18 @@ rag_names_collection = db["rag_names"]
 rag_collection=db["Rag"]
 user_collection=db["user_cv_db"]
 User = get_user_model()
+
+
+
+def fix_json_field(field_value):
+    if isinstance(field_value, str):
+        try:
+            loaded = json.loads(field_value)
+            if isinstance(loaded, (list, dict)):
+                return loaded
+        except json.JSONDecodeError:
+            pass
+    return field_value
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -386,11 +400,22 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         return self.request.user
 
 
+    
+
     def partial_update(self, request, *args, **kwargs):
             # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
-        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        data = defaultdict(lambda: None)
+        
+        
+        for key in request.data:
+            val = request.data.get(key)
+            if isinstance(val, list):
+                val = val[0]
+            data[key] = val 
+            
+        # data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if data.get('national_id') == '':
             data['national_id'] = None
 
@@ -414,6 +439,54 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                   
                data['cv'] = cv_url
                print("cv_upload", cv_url)
+               
+               try:
+                    extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}"
+                    print ("🧠 Extract URL:", extract_url)
+                    response = requests.get(extract_url)
+                    print ("🧠 Response from CV:", response)
+                    response.raise_for_status()
+                    parsed_data = response.json()
+                    # print("🧠 Parsed Data from CV:", parsed_data)
+
+                    # Fill profile fields from parsed 
+                    # Flatten and JSON encode the lists
+                    data['about'] = parsed_data.get("About", "") 
+                    data['summary'] = parsed_data.get("Summary", "")
+                    # data['experience'] = parsed_data.get("Experience", [])
+                    # data['education'] = parsed_data.get("Education", [])
+                    # data['skills'] = parsed_data.get("Skills", [])
+                    parsed_skills = parsed_data.get("Skills", [])
+                    parsed_education = parsed_data.get("Education", [])
+                    parsed_experience = parsed_data.get("Experience", [])
+                    print("🧠 Parsed Data from CV:", parsed_skills)
+                    print("🧠 Parsed Data from CV:", parsed_education)
+                    print("🧠 Parsed Data from CV:", parsed_experience)
+                    # Defensive checks to avoid nested lists
+                    # if isinstance(skills, list) and len(skills) == 1 and isinstance(skills[0], list):
+                    #     skills = skills[0]
+                    # if isinstance(education, list) and len(education) == 1 and isinstance(education[0], list):
+                    #     education = education[0]
+                    # if isinstance(experience, list) and len(experience) == 1 and isinstance(experience[0], list):
+                    #     experience = experience[0]
+                        
+                    # data['skills'] = parsed_skills
+                    # data['education'] = parsed_education
+                    # data['experience'] = parsed_experience
+                    data['skills'] = json.dumps(parsed_skills)
+                    data['education'] = json.dumps(parsed_education)
+                    data['experience'] = json.dumps(parsed_experience)
+                    
+                    print ("education", data['education'])
+                    print ("experience", data['experience'])
+                    print ("about", data['about'])
+                    print ("skills", data['skills'])
+                    # print("🔵 data:", data)
+               except Exception as e:
+                    print("🔴 CV Parsing Failed:", str(e)) 
+                    
+               
+               
             elif 'cv' in data and data['cv'] == '':  # Check for empty string
                 data['cv'] = None    
     
@@ -423,6 +496,23 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                     national_id_upload = upload(request.FILES['national_id_img'])
                     data['national_id_img'] = national_id_upload['secure_url']
                     # data['national_id_img'] = data['national_id_img']
+                    
+                    
+            # Decode stringified JSON from frontend (if any)
+            for field in ['experience', 'education', 'skills']:
+                val = data.get(field)
+                if isinstance(val, str):
+                    try:
+                        data[field] = json.loads(val)
+                    except json.JSONDecodeError:
+                        print(f"⚠️ Could not decode {field}, keeping as-is")
+                            
+                    
+            print("✅ Final Payload to Serializer:")
+            for k, v in data.items():
+                print(f"{k}: ({type(v)}) {v}")
+        
+                    
              # Create or update serializer instance
             serializer = self.get_serializer(user, data=data, partial=True)
             print('data', data)
@@ -434,6 +524,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             # Save the updated instance
             job = serializer.save()  # This will save the instance
             print("job", job.cv)
+            print("✅ Job Saved:", job.about, job.skills)
             self.perform_update(serializer)
 
             # Debug: Print the updated data
@@ -449,9 +540,9 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     def get_talents(self, request, *args, **kwargs):
         # print(request.data)
         id = int(request.query_params.get('id'))
-        print("id", id)
+        # print("id", id)
         talent = Jobseeker.objects.filter(id=id).first()
-        print("talent", talent)
+        # print("talent", talent)
         serializer = JobseekerProfileSerializer(talent)
         return Response(serializer.data)
 

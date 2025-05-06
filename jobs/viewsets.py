@@ -178,7 +178,7 @@ class JobsViewSet(viewsets.ModelViewSet):
             "company": updated_job.company.id,
             "company_name": updated_job.company.name,
             "company_logo": self.get_serializer_context()['request'].build_absolute_uri(
-                updated_job.company.img.url
+                updated_job.company.img
             ) if updated_job.company.img else None,
           }
         try:
