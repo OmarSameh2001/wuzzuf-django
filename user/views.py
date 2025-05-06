@@ -424,10 +424,11 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     # cv = serializers.FileField()
     # cv = serializers.FileField()
     def get_object(self):
-        user = self.request.user
-        if hasattr(user, 'jobseekerprofile'):
-            return user.jobseekerprofile
-        return user  # fallback
+        # user = self.request.user
+        # if hasattr(user, 'jobseekerprofile'):
+        #     return user.jobseekerprofile
+        # return user  # fallback
+        return self.request.user
 
 
     def partial_update(self, request, *args, **kwargs):
