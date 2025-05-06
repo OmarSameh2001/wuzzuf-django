@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-from .models import Company, Jobseeker, User, Itian, UserQuestions
+from .models import Company, Jobseeker, User, Itian, UserQuestions, year_choices
 from cloudinary.uploader import upload
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from datetime import timedelta
 from django.utils import timezone
+from .models import Track, Branch
 
 User = get_user_model()
 
@@ -42,6 +43,19 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
         return user
+    
+
+class TrackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Track
+        fields = ['id', 'name',]
+
+
+class BranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Branch
+        fields = ['id', 'name', 'address']
+
 
 
 class JobseekerProfileSerializer(serializers.ModelSerializer):
@@ -49,6 +63,27 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
     cv = serializers.CharField(allow_blank=True, required=False)
     img = serializers.CharField( allow_null=True ,required=False)
     national_id_img = serializers.CharField( allow_null=True ,required=False)
+    track = TrackSerializer(read_only=True)
+    branch = BranchSerializer(read_only=True)
+
+    track_id = serializers.PrimaryKeyRelatedField(
+        queryset=Track.objects.all(),
+        source='track',
+        write_only=True,
+        required=False
+    )
+    branch_id = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.all(),
+        source='branch',
+        write_only=True,
+        required=False
+    )
+
+    iti_grad_year = serializers.ChoiceField(
+        choices=year_choices(), 
+        required=False,  # Set it as not required if it's optional
+    )
+
     
     #for file upload only to be write_only
     cv_file = serializers.FileField(
@@ -80,7 +115,13 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
             'user_type',
             'cv_file',
             'specialization',
-            'seniority'
+            'seniority',
+            'track',       # nested display
+            'branch',      # nested display
+            'track_id',    # for sending during creation/update
+            'branch_id',   # for sending during creation/update
+            'iti_grad_year', 
+
         ]
         read_only_fields = ['email']
     
@@ -96,6 +137,11 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
                 validated_data['cv'] = cv_upload['secure_url']
             else:  # Explicit None means delete CV
                 validated_data['cv'] = None
+
+        # Handle iti_grad_year field
+        iti_grad_year = validated_data.pop('iti_grad_year', None)
+        if iti_grad_year is not None:
+            validated_data['iti_grad_year'] = iti_grad_year
         
         # Handle image fields (can accept either file or URL)
         for image_field in ['img', 'national_id_img']:
@@ -113,31 +159,6 @@ class JobseekerProfileSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
-    
-    # def validate_skills(self, value):
-    #     if not isinstance(value, list):
-    #         raise serializers.ValidationError("Skills must be a list.")
-    #     return value
-    
-    # def validate_education(self, value):
-    #     if not isinstance(value, list):
-    #         raise serializers.ValidationError("Education must be a list.")
-    #     for item in value:
-    #         if not isinstance(item, dict):
-    #             raise serializers.ValidationError("Each education entry must be a dictionary.")
-    #         if not set(item.keys()).issubset({"degree", "school", "startDate", "endDate", "fieldOfStudy"}):
-    #             raise serializers.ValidationError("Education entries must include 'degree', 'school', 'startDate', 'endDate', and 'fieldOfStudy'.")
-    #     return value
-
-    # def validate_experience(self, value):
-    #     if not isinstance(value, list):
-    #         raise serializers.ValidationError("Experience must be a list.")
-    #     for item in value:
-    #         if not isinstance(item, dict):
-    #             raise serializers.ValidationError("Each experience entry must be a dictionary.")
-    #         if not set(item.keys()).issubset({"title", "company", "startDate", "endDate"}):
-    #             raise serializers.ValidationError("Experience entries must include 'title', 'company', 'startDate', and 'endDate'.")
-    #     return value
     
 class CompanyProfileSerializer(serializers.ModelSerializer):
     # logo=serializers.ImageField(required=False)
@@ -189,7 +210,6 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
 
             return instance
 
-
 class ItianSerializer(serializers.ModelSerializer):
     class Meta:
         model = Itian
@@ -198,71 +218,6 @@ class ItianSerializer(serializers.ModelSerializer):
 class OTPVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6, min_length=6) 
-
-
-# class PasswordResetRequestSerializer(serializers.Serializer):
-#     email = serializers.EmailField()
-
-#     def validate_email(self, value):
-#         """Ensure the email exists in the database and limit to 2 requests per day"""
-#         try:
-#             user = User.objects.get(email=value)
-#         except User.DoesNotExist:
-#             raise serializers.ValidationError("User with this email does not exist.")
-
-#         now = timezone.now()
-#         # Clean old entries older than 24 hours
-#         user.password_reset_requests = [
-#             ts for ts in user.password_reset_requests
-#             if timezone.datetime.fromisoformat(ts).date() == now.date()
-#         ]
-
-#         if len(user.password_reset_requests) >= 3:
-#             raise serializers.ValidationError("You have reached the daily limit for password reset requests. Try again tomorrow.")
-
-#         return value
-
-#     def send_password_reset_email(self):
-#         """Send the reset email with token"""
-#         email = self.validated_data['email']
-#         user = User.objects.get(email=email)
-
-#         token = default_token_generator.make_token(user)
-#         reset_url = f"http://localhost:5173/reset-password/{user.email}?token={token}"
-
-#         subject = 'Password Reset Request'
-#         message = (
-#             f"Dear {user.name},\n\n"
-#             f"You requested a password reset.\n\n"
-#             f"Please click the link below to reset your password:\n"
-#             f"{reset_url}\n\n"
-#             f"If you did not request this, you can safely ignore this email.\n\n"
-#             f"Best regards,\n"
-#             f"RecruitHub Team"
-#         )
-
-#         sender = '"RecruitHub" <hebagassem911@gmail.com>'
-
-#         print(f"Sending password reset email to {email}")
-
-#         result = send_mail(
-#             subject,
-#             message,
-#             sender,
-#             [email],
-#             fail_silently=False,
-#         )
-
-#         if result == 1:
-#             print("Email successfully sent")
-#             if hasattr(user, 'password_reset_requests'):
-#                 user.password_reset_requests.append(timezone.now().isoformat())
-#                 user.save()
-#             return True
-#         else:
-#             print("Email sending failed")
-#             return False
-
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()

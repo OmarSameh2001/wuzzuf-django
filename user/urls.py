@@ -1,13 +1,28 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    UserCreateView, UserRetrieveUpdateView, ResendOTPView,
-    JobseekerViewSet, CompanyViewSet, CustomAuthToken, JobseekerListView,VerifyOTPView, GetPasswordResetTokenView
-    ,PasswordResetRequestView, PasswordResetConfirmView, check_email_exists, check_username_exists, AdminUserViewSet, UserQuestionsViewSet
+    UserCreateView, 
+    UserRetrieveUpdateView, 
+    ResendOTPView,
+    JobseekerViewSet, 
+    CompanyViewSet, 
+    CustomAuthToken, 
+    JobseekerListView,VerifyOTPView, 
+    GetPasswordResetTokenView
+    ,PasswordResetRequestView, 
+    PasswordResetConfirmView, 
+    AdminUserViewSet, 
+    UserQuestionsViewSet,
+    TrackViewSet,
+    BranchViewSet,
+    check_email_exists, 
+    check_username_exists, 
 )
 
 router = DefaultRouter()
 router.register(r'jobseekers', JobseekerViewSet, basename='jobseeker')
+router.register(r'tracks', TrackViewSet)
+router.register(r'branches', BranchViewSet)
 router.register(r'companies', CompanyViewSet, basename='company')
 router.register(r'admin', AdminUserViewSet, basename='admin-users')
 router.register(r'chatbot', UserQuestionsViewSet, basename='chatbot')
