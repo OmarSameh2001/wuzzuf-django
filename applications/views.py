@@ -25,6 +25,7 @@ from .email import send_bulk_application_emails, send_schedule_email, send_contr
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 logger = logging.getLogger(__name__)
+import threading
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -622,7 +623,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
 
  
- 
 def perform_create_for_admin(application):
         print(application)
         user_id = application.user.id
@@ -632,24 +632,25 @@ def perform_create_for_admin(application):
         if not cv_url:
             raise ValueError("User CV not found")
 
-        ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
-        ats_data = {"cv_url": cv_url, "job_id": job_id}
-        try:
-            ats_response = requests.post(ats_url, json=ats_data)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error connecting to ATS service: {e}")
-            raise Exception("ATS Service is not reachable")
-        ats_result = ats_response.json()
+        ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}"
+        ats_data = {"cv_url": cv_url, "job_id": job_id, "application_id": application.id}
+        def ats_background():
+            try:
+                ats_response = requests.post(ats_url, json=ats_data)
+                ats_result = ats_response.json()
+                if ats_response.status_code != 200:
+                    logger.error(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error connecting to ATS service: {e}")
 
-        if ats_response.status_code != 200:
-           raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+        threading.Thread(target=ats_background).start()
 
-        application.ats_res = ats_result.get("match_percentage", 0)
+        # application.ats_res = ats_result.get("match_percentage", 0)
     # recommendations_list = recommendations.get("recommendations", [])
     # application.screening_res = json.dumps([job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None])
         application.save()
-        print('Ats result', ats_result)
-        return ats_result#, recommendations
+        # print('Ats result', ats_result)
+        return True#, recommendations
  
     
 async def perform_create_async(application):
@@ -661,9 +662,11 @@ async def perform_create_async(application):
         raise ValueError("User CV not found")
 
     ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
-    ats_data = {"cv_url": cv_url, "job_id": job_id}
+    print("ats_url", ats_url)
+    ats_data = {"cv_url": cv_url, "job_id": job_id, 'application_id': application.id}
 
     async with httpx.AsyncClient() as client:
+        print(ats_url)
         ats_response = await client.post(ats_url, json=ats_data)
         ats_result = ats_response.json()
 
@@ -672,21 +675,21 @@ async def perform_create_async(application):
         if ats_response.status_code != 200:
             raise Exception(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
 
-        recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
-        recommendation_response = await client.get(recommendation_url)
-        recommendations = recommendation_response.json()
+        # recommendation_url = f"{FASTAPI_URL}/recom/?user_id={user_id}&cv_url={cv_url}"
+        # recommendation_response = await client.get(recommendation_url)
+        # recommendations = recommendation_response.json()
 
-        if recommendation_response.status_code != 200:
-            raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
-        if recommendation_response.status_code != 200:
-            raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
+        # if recommendation_response.status_code != 200:
+        #     raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
+        # if recommendation_response.status_code != 200:
+        #     raise Exception(f"Recommendation Service Error: {recommendations.get('detail', 'Unknown Error')}")
 
     # Store results before saving
-    application.ats_res = ats_result.get("match_percentage", 0)
-    recommendations_list = recommendations.get("recommendations", [])
-    application.screening_res = json.dumps([
-        job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None
-    ])
+    # application.ats_res = ats_result.get("match_percentage", 0)
+    # recommendations_list = recommendations.get("recommendations", [])
+    # application.screening_res = json.dumps([
+    #     job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None
+    # ])
 
     return ats_result, recommendations
  

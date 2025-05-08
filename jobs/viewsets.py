@@ -18,6 +18,7 @@ from django.db.models import Count, Case, When, IntegerField
 import os
 from dotenv import load_dotenv
 load_dotenv()
+from user.helpers import jobs_collection
 
 FASTAPI_URL = os.environ.get("FAST_API")
 class JobPagination(PageNumberPagination):
@@ -204,12 +205,11 @@ class JobsViewSet(viewsets.ModelViewSet):
 
       job.delete()
 
-       # Sync delete with FastAPI
+       # Sync delete with Mongo
       try:
-         fastapi_response = requests.delete(f"{FASTAPI_URL}/{pk}")
-         fastapi_response.raise_for_status()
+         jobs_collection.delete_one({"id": pk})
       except requests.exceptions.RequestException as e:
-        return Response({"error": f"Failed to sync delete with FastAPI: {e}"}, status=500)
+        return Response({"error": f"Failed to sync delete with Vector Database: {e}"}, status=500)
 
       return Response(status=204)
  

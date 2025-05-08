@@ -1,4 +1,19 @@
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+from pymongo import MongoClient
+import threading
+import requests
+
+load_dotenv()
+
+client = MongoClient(os.getenv('MONGO_URI'))
+db = client['job_db']
+jobs_collection=db["jobs"]
+rag_names_collection = db["rag_names"]
+rag_collection=db["Rag"]
+user_collection=db["user_cv_db"]
+
 
 def extract_dob_from_national_id(nat_id):
     if len(nat_id) < 7 or not nat_id.isdigit():
@@ -21,3 +36,37 @@ def extract_dob_from_national_id(nat_id):
     except ValueError:
         return None  # Invalid date
 
+def update_company_mongo(company, old_company):
+    print("company updated in mongo", company)
+    jobs_collection.update_many(
+        {"company": old_company.id},
+        {
+            "$set": {
+                "company_name": company["name"] if 'name' in company else old_company.name,
+                "company_logo": company["img"] if company["img"] else None
+            }
+        },
+    )
+
+def update_jobseeker_mongo(data, user):
+    user_collection.update_one(
+        {"user_id": user["id"]},
+        {
+            "$set": {
+                "name": data["name"] or user["name"],
+                "seniority": data["seniority"] if data["seniority"] else None
+            }
+        },
+    )
+
+def send_rag(url, file):
+    files = {"file": file}
+    def task():
+        try:
+            response = requests.post(url, files=files)
+            response.raise_for_status()
+            rag = response.json()
+            rag_collection.insert_one(rag)
+        except Exception as e:
+            print(f"Failed to send rag to {url}: {e}")
+    threading.Thread(target=task).start()

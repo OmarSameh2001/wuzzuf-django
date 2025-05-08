@@ -26,7 +26,7 @@ from drf_yasg import openapi
 import smtplib
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework.exceptions import ValidationError
-from .helpers import extract_dob_from_national_id
+from .helpers import extract_dob_from_national_id, user_collection, jobs_collection,rag_collection, rag_names_collection, update_company_mongo, update_jobseeker_mongo, send_rag
 
 from .filters import JobseekerFilter
 from rest_framework.decorators import action
@@ -50,11 +50,7 @@ load_dotenv()
 
 
 FASTAPI_URL = os.getenv('FAST_API')
-client = MongoClient(os.getenv('MONGO_URI'))
-db = client['job_db']
-rag_names_collection = db["rag_names"]
-rag_collection=db["Rag"]
-user_collection=db["user_cv_db"]
+
 User = get_user_model()
 
 
@@ -385,6 +381,25 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         else:
             return JobseekerProfileSerializer  # default fallback
 
+    def partial_update(self, request, *args, **kwargs):
+        # return super().partial_update(request, *args, **kwargs)
+        user = self.get_object()
+        data = request.data.copy()
+       
+
+        if 'img' in request.FILES:
+            image_upload = upload(request.FILES['img'])
+            data['img'] = image_upload['secure_url']
+        if ('name' in data and data['name'] != user.name) or ('img' in data and data['img'] != user.img) and user.user_type == 'COMPANY':
+            update_company_mongo(data, user)
+            
+        print("data", data['img'])
+        serializer = self.get_serializer(user, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
 
 class JobseekerViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
@@ -406,6 +421,9 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             # Debug: Check request.FILES
         print("🟡 request.FILES:", request.FILES)
         user = self.get_object()
+        if 'update' in request.data:
+            update = request.data['update']
+            del request.data['update']
         data = defaultdict(lambda: None)
         
         
@@ -416,8 +434,8 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             data[key] = val 
             
         # data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if data.get('national_id') == '':
-            data['national_id'] = None
+        # if data.get('national_id') == '':
+        #     data['national_id'] = None
 
 
         try:
@@ -440,51 +458,44 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                data['cv'] = cv_url
                print("cv_upload", cv_url)
                
-               try:
-                    extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}"
-                    print ("🧠 Extract URL:", extract_url)
-                    response = requests.get(extract_url)
-                    print ("🧠 Response from CV:", response)
-                    response.raise_for_status()
-                    parsed_data = response.json()
-                    # print("🧠 Parsed Data from CV:", parsed_data)
+               if update:
+                    try:
+                        extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}"
+                        print ("🧠 Extract URL:", extract_url)
+                        response = requests.get(extract_url)
+                        print ("🧠 Response from CV:", response)
+                        response.raise_for_status()
+                        parsed_data = response.json()
+                        # print("🧠 Parsed Data from CV:", parsed_data)
 
-                    # Fill profile fields from parsed 
-                    # Flatten and JSON encode the lists
-                    data['about'] = parsed_data.get("About", "") 
-                    data['summary'] = parsed_data.get("Summary", "")
-                    # data['experience'] = parsed_data.get("Experience", [])
-                    # data['education'] = parsed_data.get("Education", [])
-                    # data['skills'] = parsed_data.get("Skills", [])
-                    parsed_skills = parsed_data.get("Skills", [])
-                    parsed_education = parsed_data.get("Education", [])
-                    parsed_experience = parsed_data.get("Experience", [])
-                    print("🧠 Parsed Data from CV:", parsed_skills)
-                    print("🧠 Parsed Data from CV:", parsed_education)
-                    print("🧠 Parsed Data from CV:", parsed_experience)
-                    # Defensive checks to avoid nested lists
-                    # if isinstance(skills, list) and len(skills) == 1 and isinstance(skills[0], list):
-                    #     skills = skills[0]
-                    # if isinstance(education, list) and len(education) == 1 and isinstance(education[0], list):
-                    #     education = education[0]
-                    # if isinstance(experience, list) and len(experience) == 1 and isinstance(experience[0], list):
-                    #     experience = experience[0]
+                        # Fill profile fields from parsed 
+                        # Flatten and JSON encode the lists
+                        data['about'] = parsed_data.get("About", "") 
+                        data['summary'] = parsed_data.get("Summary", "")
+
+                        parsed_skills = parsed_data.get("Skills", [])
+                        parsed_education = parsed_data.get("Education", [])
+                        parsed_experience = parsed_data.get("Experience", [])
+                        print("🧠 Parsed Data from CV:", parsed_skills)
+                        print("🧠 Parsed Data from CV:", parsed_education)
+                        print("🧠 Parsed Data from CV:", parsed_experience)
                         
-                    # data['skills'] = parsed_skills
-                    # data['education'] = parsed_education
-                    # data['experience'] = parsed_experience
-                    data['skills'] = json.dumps(parsed_skills)
-                    data['education'] = json.dumps(parsed_education)
-                    data['experience'] = json.dumps(parsed_experience)
-                    
-                    print ("education", data['education'])
-                    print ("experience", data['experience'])
-                    print ("about", data['about'])
-                    print ("skills", data['skills'])
-                    # print("🔵 data:", data)
-               except Exception as e:
-                    print("🔴 CV Parsing Failed:", str(e)) 
-                    
+                        data['skills'] = json.dumps(parsed_skills)
+                        data['education'] = json.dumps(parsed_education)
+                        data['experience'] = json.dumps(parsed_experience)
+                        
+                        print ("education", data['education'])
+                        print ("experience", data['experience'])
+                        print ("about", data['about'])
+                        print ("skills", data['skills'])
+                        # print("🔵 data:", data)
+                    except Exception as e:
+                        print("🔴 CV Parsing Failed:", str(e))
+               else:
+                    # Update cv without extracting data
+                    extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}&update=False"
+                    response = requests.get(extract_url)
+                            
                
                
             elif 'cv' in data and data['cv'] == '':  # Check for empty string
@@ -513,7 +524,9 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                 print(f"{k}: ({type(v)}) {v}")
         
                     
-             # Create or update serializer instance
+            
+            if user.seniority != data['seniority'] or user.name != data['name']:
+                update_jobseeker_mongo(data, user)
             serializer = self.get_serializer(user, data=data, partial=True)
             print('data', data)
             # Validate serializer
@@ -536,6 +549,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
           print(f"🔴 Error during update: {str(e)}")
         #   print(serializer)
           return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     @action(methods=["post"], detail=False)
     def get_talents(self, request, *args, **kwargs):
         # print(request.data)
@@ -566,14 +580,13 @@ class CompanyViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         data = request.data.copy()
        
-       
+
         if 'img' in request.FILES:
             image_upload = upload(request.FILES['img'])
             data['img'] = image_upload['secure_url']
-
-        # if 'logo' in request.FILES:
-        #     logo_upload = upload(request.FILES['logo'])
-        #     data['logo'] = logo_upload['secure_url']   
+        if user.name != data['name'] or user.img != data['img']:
+            update_company_mongo(data)
+            
         print("data", data['img'])
         serializer = self.get_serializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -817,13 +830,12 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
                 return Response({"message": f"Pdf with this name already uploaded on {date}"}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 url = FASTAPI_URL + "/rag"
-                response = requests.post(url, files={'pdf': file})
-                if response.status_code != 200:
-                    raise Exception(response.text)
-                return Response(response.json())
+                send_rag(url, file)
+                return Response({"message": "PDF uploaded successfully, processing in background"}, status=status.HTTP_200_OK)
             except Exception as e:
                 print(f"Error processing PDF: {e}")
                 return Response({"message": "PDF processing failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     @action(detail=False, methods=['get'], permission_classes=[IsAdminUser])
     def get_rag(self, request):
         page = int(request.query_params.get('page', 1))

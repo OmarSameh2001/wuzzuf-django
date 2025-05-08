@@ -166,9 +166,9 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         
             # Process file uploads if present in request.FILES
             if request and hasattr(request, "FILES"):
-                if 'img' in request.FILES:
-                    image_upload = upload(request.FILES['img'])
-                    validated_data['img'] = image_upload['secure_url']
+                # if 'img' in request.FILES:
+                #     image_upload = upload(request.FILES['img'])
+                #     validated_data['img'] = image_upload['secure_url']
 
                 if 'cv' in request.FILES:
                     cv_upload = upload(request.FILES['cv'], resource_type="raw")
