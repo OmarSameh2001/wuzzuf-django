@@ -2,14 +2,13 @@ from .models import Application
 from .serializers import ApplicationSerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from django.utils.decorators import method_decorator
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from jobs.models import Job 
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ApplicationFilter
-from rest_framework.response import Response
 from django.core.mail import send_mail
 from rest_framework import  viewsets, status
 from django.utils.timezone import make_aware
@@ -20,6 +19,11 @@ import requests
 import json
 import httpx
 import csv
+from applications.cloudinary import upload_video
+import tempfile
+from rest_framework.decorators import api_view
+import cloudinary.uploader
+from datetime import datetime
 from io import StringIO
 from .email import send_bulk_application_emails, send_schedule_email, send_contract
 from django.core.exceptions import ObjectDoesNotExist
@@ -27,9 +31,27 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 import os
 from dotenv import load_dotenv
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import action, parser_classes
+from django.core.mail import EmailMultiAlternatives
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from django.core.mail import EmailMultiAlternatives
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+import textwrap
+import json
+from applications.utils import generate_pdf_report, send_email_with_attachment
 load_dotenv()
 
-
+NODE_SERVICE_URL=os.environ.get("MAIL_SERVICE")
 FASTAPI_URL = os.environ.get("FAST_API") 
 
 class CustomPagination(PageNumberPagination):
@@ -417,8 +439,216 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         #     return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+    # @action(detail=True, methods=['post'])
+    # @parser_classes([MultiPartParser, FormParser])
+    # def submit_video(self, request, pk=None):
+    #     """Handle video interview submission"""
+    #     try:
+    #         # 2. Get application and validate inputs
+    #         application = self.get_object()
+    #         print(application)
+    #         video_file = request.FILES.get('video')
+    #         # print(video_file)
+    #         question = request.POST.get('question')
+    #         print(question)
+    #         if not video_file or not question:
+    #             return Response(
+    #                 {'error': 'Video and question are required'}, 
+    #                 status=status.HTTP_400_BAD_REQUEST
+    #             )
 
+    #         # 3. Upload to Cloudinary
+    #         cloudinary_result = upload_video(video_file)
+    #         # print('cloudinary_result',cloudinary_result)
+            
+    #         # 4. Send to FastAPI for analysis
+    #         payload = {
+    #             'video_url': cloudinary_result['url'],
+    #             'question': question,
+    #             'job_description': application.job.description
+    #         }
+    #         # print("PAYLOAD",payload)
+    #         response = httpx.post(
+    #             f"{FASTAPI_URL}/analyze-interview/",
+    #             json=payload,
+    #             timeout=120.0
+    #         )
+    #         print("FASTAPI RESPONSE",response)
+        
+    #         response.raise_for_status()
+    #         scores = response.json()
+           
+    #         # 5. Save results and generate report
 
+    #         application.screening_res = json.dumps({
+    #             'total_score': scores.get('total_score', 0),
+    #             # 'cloudinary_data': cloudinary_result,
+    #             # 'analysis_date': datetime.now().isoformat()
+    #         })
+
+    #         if scores.get('total_score', 0) >= 60:
+    #             application.status = str(int(application.status) + 1)
+
+    #         application.save()
+
+    #         # Generate and email PDF
+    #         pdf_filename = f"interview_report_{application.user.name}.pdf"
+             
+    #         # # Use temporary directory context manager
+    #         # with tempfile.TemporaryDirectory() as tmpdirname:
+    #         #     pdf_path = os.path.join(tmpdirname, pdf_filename)
+                
+    #         # In your Django view:
+    #         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
+    #             pdf_path = tmp_file.name 
+    #         # Attempt PDF generation
+    #         if generate_pdf_report(scores, pdf_path):
+    #             # Track email success
+    #             email_sent = send_email_with_attachment(
+    #                 to_email=application.user.email,
+    #                 subject="Your Interview Analysis Report",
+    #                 data={
+    #                     'question': scores.get('question', ''),
+    #                     'user_answer': scores.get('user_answer', ''),
+    #                     'ideal_answer': scores.get('ideal_answer', ''),
+    #                     'answer_score': scores.get('answer_score', 0),
+    #                     'pronunciation_score': scores.get('pronunciation_score', 0),
+    #                     'grammar_score': scores.get('grammar_score', 0),
+    #                     'eye_contact_score': scores.get('eye_contact_score', 0),
+    #                     'attire_score': scores.get('attire_score', 0),
+    #                     'total_score': scores.get('total_score', 0),
+    #                     'feedback': scores.get('feedback', '')
+    #                     },
+    #                 attachment_path=pdf_path
+    #             )
+    #             try:
+    #                 os.unlink(pdf_path)  # Clean up the temp file
+    #             except OSError:
+    #                 logger.error(f"Failed to delete temp file: {str(e)}")
+                
+    #             if not email_sent:
+    #                 logger.warning("Analysis succeeded but email failed")
+    #         else:
+    #             logger.error("PDF generation failed completely")
+
+    #     #     # 5. Save results
+    #     #     application.screening_res = json.dumps({
+    #     #         'video_analysis': scores,
+    #     #         'cloudinary_data': cloudinary_result,
+    #     #         'analysis_date': datetime.now().isoformat()
+    #     #     })
+            
+    #     #     if scores.get('total_score', 0) >= 70:
+    #     #         application.status = str(int(application.status) + 1)
+            
+    #     #     application.save()
+
+    #         # 6. Return results
+    #         return Response({
+    #             **scores,
+    #             'video_url': cloudinary_result['url']
+    #         })
+
+    #     except httpx.ConnectError:
+    #         return Response(
+    #             {'error': 'Analysis service unavailable'},
+    #             status=status.HTTP_503_SERVICE_UNAVAILABLE
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"Video submission error: {str(e)}")
+    #         return Response(
+    #             {'error': 'Processing failed'},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    #         )
+
+        
+    @action(detail=True, methods=['post'])
+    @parser_classes([MultiPartParser, FormParser])
+    def submit_video(self, request, pk=None):
+        """Handle video interview submission"""
+        try:
+            # 1. Get application and validate inputs
+            application = self.get_object()
+            video_file = request.FILES.get('video')
+            question = request.POST.get('question')
+
+            if not video_file or not question:
+                return Response(
+                    {'error': 'Video and question are required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 2. Upload video to Cloudinary
+            cloudinary_result = upload_video(video_file)
+
+            # 3. Send video URL + question to FastAPI for analysis
+            payload = {
+                'video_url': cloudinary_result['url'],
+                'question': question,
+                'job_description': application.job.description
+            }
+
+            response = httpx.post(
+                f"{FASTAPI_URL}/analyze-interview/",
+                json=payload,
+                timeout=120.0
+            )
+            response.raise_for_status()
+            scores = response.json()
+
+            # 4. Save results in application
+            application.screening_res = json.dumps({
+                'total_score': scores.get('total_score', 0),
+            })
+
+            if scores.get('total_score', 0) >= 60:
+                application.status = str(int(application.status) + 1)
+
+            application.save()
+
+            # 5. Forward scores to Node.js PDF/email service
+            email_payload = {
+                'email': application.user.email,
+                'question': scores.get('question', ''),
+                'user_answer': scores.get('user_answer', ''),
+                'ideal_answer': scores.get('ideal_answer', ''),
+                'answer_score': scores.get('answer_score', 0),
+                'pronunciation_score': scores.get('pronunciation_score', 0),
+                'grammar_score': scores.get('grammar_score', 0),
+                'attire_score': scores.get('attire_score', 0),
+                'total_score': scores.get('total_score', 0),
+                'feedback': scores.get('feedback', '')
+            }
+
+            try:
+                print(f"MAIL_SERVICE = {NODE_SERVICE_URL}")
+                email_response = httpx.post(
+                    # f"{NODE_SERVICE_URL}send-report",
+                    f"http://localhost:5000/send-report",
+                    json=email_payload,
+                    timeout=30.0
+                )
+                email_response.raise_for_status()
+            except Exception as e:
+                logger.error(f"Failed to send report via Node.js service: {e}")
+
+            # 6. Return results
+            return Response({
+                **scores,
+                'video_url': cloudinary_result['url']
+            })
+
+        except httpx.ConnectError:
+            return Response(
+                {'error': 'Analysis service unavailable'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            logger.error(f"Video submission error: {str(e)}")
+            return Response(
+                {'error': 'Processing failed'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
     @action(detail=False, methods=['post'])
@@ -513,52 +743,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response({'error': f'Error processing file: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-        
-
-    #             if score >= success:
-    #                 try:
-    #                     applicant = Application.objects.get(
-    #                         user__email=email, 
-    #                         status=old_status, 
-    #                         job__company=company,
-    #                         job__id =job,
-    #                         fail=False
-    #                     )
-    #                     applicant.status = new_status
-    #                     applicant.save()
-    #                     updated_count += 1
-    #                     success_emails.append(email)
-    #                 except ObjectDoesNotExist:
-    #                     continue
-
-    #             elif fail:
-    #                 try:
-    #                     applicant = Application.objects.get(
-    #                         user__email=email, 
-    #                         status=old_status, 
-    #                         job__company=company,
-    #                         job__id =job,
-    #                         fail=False
-    #                     )
-    #                     applicant.fail = True
-    #                     applicant.save()
-    #                     fail_count += 1
-    #                     fail_emails.append(email)
-    #                 except ObjectDoesNotExist:
-    #                     continue
-
-    #         return Response({
-    #             'message': f'{updated_count} applicants updated and {fail_count} applicants marked as failed.',
-    #             'success_score': success,
-    #             'new_status': new_status,
-    #             # 'success_emails': success_emails,
-    #             # 'fail_emails': fail_emails
-    #         })
-
-    #     except Exception as e:
-    #         return Response({'error': f'Error processing file: {str(e)}'}, 
-    #                     status=status.HTTP_400_BAD_REQUEST)
-    # from rest_framework.pagination import PageNumberPagination
 
     @action(detail=False, methods=['get'])
     def meetings(self, request):

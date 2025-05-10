@@ -35,6 +35,7 @@ class Application(models.Model):
     salary = models.CharField(blank=True, null=True)
     insurance = models.CharField(blank=True, null=True)
     termination = models.CharField(blank=True, null=True)
+    screening_res = models.TextField(blank=True, null=True)
 
     def __str__(self):
          return f"{self.user.username} - {self.job.title} - {self.status}"
