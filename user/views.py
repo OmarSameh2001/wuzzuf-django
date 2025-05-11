@@ -424,6 +424,8 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         if 'update' in request.data:
             update = request.data['update']
             del request.data['update']
+        else:
+            update = True
         data = defaultdict(lambda: None)
         
         
