@@ -86,12 +86,14 @@ class JobsViewSet(viewsets.ModelViewSet):
                 "location": job_instance.location,
                 "status": job_instance.status,
                 "type_of_job": job_instance.type_of_job,
+                "attend": job_instance.attend,
+                "specialization": job_instance.specialization,
                 "experince": job_instance.experince,
                 "company": job_instance.company.id,
                 "company_name": job_instance.company.name,
                 "company_logo": self.get_serializer_context()['request'].build_absolute_uri(
                     job_instance.company.img.url
-                ) if job_instance.company.img else "None",
+                ) if job_instance.company.img else None,
             }
 
             print("company_instance", job_instance.company)
@@ -175,6 +177,8 @@ class JobsViewSet(viewsets.ModelViewSet):
             "location": updated_job.location,
             "status": updated_job.status,
             "type_of_job": updated_job.type_of_job,
+            "attend": updated_job.attend,
+            "specialization": updated_job.specialization,
             "experince": updated_job.experince, 
             "company": updated_job.company.id,
             "company_name": updated_job.company.name,
