@@ -87,11 +87,11 @@ class JobseekerAdmin(admin.ModelAdmin):
             None,
             {
                 "fields": (
-                    "email", "username", "password", "name", "dob", "phone_number", "img", "skills"
+                    "email", "username", "password", "name", "dob", "phone_number", "img", "skills","is_verified"
                 )
             },
         ),
-        ("Profile", {"fields": ("summary","about","education", "experience","cv","accounts")}),
+        ("Profile", {"fields": ("summary","about","education", "experience","cv","accounts","seniority","specialization")}),
         ("National ID Details", {"fields": ("national_id", "national_id_img")}),
     )
     readonly_fields = ["last_login"]
