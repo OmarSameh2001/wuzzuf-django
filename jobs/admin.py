@@ -52,7 +52,7 @@ class JobAdmin(admin.ModelAdmin):
              response = requests.put(f"{FASTAPI_URL}/{obj.id}", json=fastapi_data)
             else:
             # If the job is being created
-             response = requests.post(FASTAPI_URL, json=fastapi_data)
+             response = requests.post(FASTAPI_URL + "/jobs", json=fastapi_data)
 
             response.raise_for_status()
 

@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import NotFound
 from rest_framework import generics, viewsets, filters, status
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly,IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly,IsAdminUser, BasePermission, SAFE_METHODS
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
@@ -10,6 +11,7 @@ from rest_framework.schemas.openapi import AutoSchema
 from django_filters.rest_framework import DjangoFilterBackend
 from cloudinary.uploader import upload
 from datetime import timedelta
+from .serializers import TrackSerializer, BranchSerializer
 from collections import defaultdict
 from cloudinary.uploader import upload_resource
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -18,7 +20,7 @@ from .filters import JobseekerFilter, CompanyFilter
 from rest_framework import status
 # from .utils import (send_otp_email, send_company_verification_email)
 from .serializers import UserSerializer, OTPVerificationSerializer,PasswordResetConfirmSerializer, JobseekerProfileSerializer, CompanyProfileSerializer, AuthTokenSerializer, ItianSerializer, UserQuestionsSerializer
-from .models import Company, Jobseeker, Itian, UserQuestions
+from .models import Company, Jobseeker, Itian, UserQuestions, Track, Branch
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
@@ -243,7 +245,13 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         itian.delete()  
         return Response({"message": "Itian deleted successfully"})
 
-
+class IsAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        # Allow anyone to view (GET, HEAD, OPTIONS), but only admin can edit
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user and request.user.is_staff
+    
 class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -369,8 +377,18 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     # schema = DynamicUserSchema() 
 
     def get_object(self):
-        # print("self.request.user", self.request.user.img)
-        return self.request.user
+        user = self.request.user
+        if user.user_type == User.UserType.JOBSEEKER:
+            try:
+                return Jobseeker.objects.get(pk=user.pk)
+            except Jobseeker.DoesNotExist:
+                raise NotFound("Jobseeker profile not found")
+        elif user.user_type == User.UserType.COMPANY:
+            try:
+                return Company.objects.get(pk=user.pk)
+            except Company.DoesNotExist:
+                raise NotFound("Company profile not found")
+        return user  # fallback to the user object if not JOBSEEKER or COMPANY
 
     def get_serializer_class(self):
         user = self.request.user
@@ -400,6 +418,15 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
         return Response(serializer.data)
 
+class TrackViewSet(viewsets.ModelViewSet):
+    queryset = Track.objects.all()
+    serializer_class = TrackSerializer
+    permission_classes = [IsAdminOrReadOnly]  # Only admins can add/edit
+
+class BranchViewSet(viewsets.ModelViewSet):
+    queryset = Branch.objects.all()
+    serializer_class = BranchSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
 class JobseekerViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.filter(user_type=User.UserType.JOBSEEKER)
@@ -412,10 +439,12 @@ class JobseekerViewSet(viewsets.ModelViewSet):
     # cv = serializers.FileField()
     # cv = serializers.FileField()
     def get_object(self):
+        # user = self.request.user
+        # if hasattr(user, 'jobseekerprofile'):
+        #     return user.jobseekerprofile
+        # return user  # fallback
         return self.request.user
 
-
-    
 
     def partial_update(self, request, *args, **kwargs):
             # Debug: Check request.FILES
@@ -426,10 +455,11 @@ class JobseekerViewSet(viewsets.ModelViewSet):
             del request.data['update']
         else:
             update = True
-        data = defaultdict(lambda: None)
+        data = {}
         
         
         for key in request.data:
+            print("key", key)
             val = request.data.get(key)
             if isinstance(val, list):
                 val = val[0]
@@ -520,26 +550,38 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                     except json.JSONDecodeError:
                         print(f"⚠️ Could not decode {field}, keeping as-is")
                             
+            
                     
             print("✅ Final Payload to Serializer:")
             for k, v in data.items():
                 print(f"{k}: ({type(v)}) {v}")
+                print("✅ Final Payload to Serializer:")
         
                     
             
-            if user.seniority != data['seniority'] or user.name != data['name']:
+            if 'seniority' in data and user.seniority != data['seniority'] or 'name' in data and user.name != data['name']:
                 update_jobseeker_mongo(data, user)
+                # pass
+            # print("user", data['name'])
+            
+            for field in ['name', 'seniority']:
+                if not data.get(field):
+                    data[field] = getattr(user, field, None)
             serializer = self.get_serializer(user, data=data, partial=True)
             print('data', data)
             # Validate serializer
             if not serializer.is_valid():
                 print("🔴 Serializer Errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Handle iti_grad_year field
+            if 'iti_grad_year' in data:
+                data['iti_grad_year'] = data.get('iti_grad_year')
 
             # Save the updated instance
-            job = serializer.save()  # This will save the instance
-            print("job", job.cv)
-            print("✅ Job Saved:", job.about, job.skills)
+            seeker = serializer.save()  # This will save the instance
+            print("seeker", seeker.cv)
+            print("✅ Profile Saved:", seeker.about, seeker.skills)
             self.perform_update(serializer)
 
             # Debug: Print the updated data

@@ -98,7 +98,7 @@ class JobsViewSet(viewsets.ModelViewSet):
             print("fastapi_data", fastapi_data)
             
             try:
-                response = requests.post(FASTAPI_URL, json=fastapi_data)
+                response = requests.post(FASTAPI_URL + "/jobs", json=fastapi_data)
                 response.raise_for_status()  # Raise an exception for 4xx/5xx responses
                 
                 fastapi_response = response.json()

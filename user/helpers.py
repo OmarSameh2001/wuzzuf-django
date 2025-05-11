@@ -49,11 +49,12 @@ def update_company_mongo(company, old_company):
     )
 
 def update_jobseeker_mongo(data, user):
+    print("user updated in mongo", user)
     user_collection.update_one(
-        {"user_id": user["id"]},
+        {"user_id": user.id},
         {
             "$set": {
-                "name": data["name"] or user["name"],
+                "name": data["name"] or user.name,
                 "seniority": data["seniority"] if data["seniority"] else None
             }
         },
