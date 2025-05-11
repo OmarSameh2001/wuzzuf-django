@@ -570,6 +570,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         try:
             # 1. Get application and validate inputs
             application = self.get_object()
+            if(application.screening_res is not None):
+                return Response(
+                    {'error': 'Video already submitted'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             video_file = request.FILES.get('video')
             question = request.POST.get('question')
 
@@ -585,58 +590,59 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             # 3. Send video URL + question to FastAPI for analysis
             payload = {
                 'video_url': cloudinary_result['url'],
-                'question': question,
-                'job_description': application.job.description
+                'job_id': application.job.id,
+                'application_id': application.id
             }
 
-            response = httpx.post(
+            
+            def analyze_interview(): 
+                httpx.post(
                 f"{FASTAPI_URL}/analyze-interview/",
                 json=payload,
                 timeout=120.0
             )
-            response.raise_for_status()
-            scores = response.json()
 
-            # 4. Save results in application
-            application.screening_res = json.dumps({
-                'total_score': scores.get('total_score', 0),
-            })
+            threading.Thread(target=analyze_interview).start()
 
-            if scores.get('total_score', 0) >= 60:
-                application.status = str(int(application.status) + 1)
+            # # 4. Save results in application
+            # application.screening_res = json.dumps({
+            #     'total_score': scores.get('total_score', 0),
+            # })
 
-            application.save()
+            # if scores.get('total_score', 0) >= 60:
+            #     application.status = str(int(application.status) + 1)
 
-            # 5. Forward scores to Node.js PDF/email service
-            email_payload = {
-                'email': application.user.email,
-                'question': scores.get('question', ''),
-                'user_answer': scores.get('user_answer', ''),
-                'ideal_answer': scores.get('ideal_answer', ''),
-                'answer_score': scores.get('answer_score', 0),
-                'pronunciation_score': scores.get('pronunciation_score', 0),
-                'grammar_score': scores.get('grammar_score', 0),
-                'attire_score': scores.get('attire_score', 0),
-                'total_score': scores.get('total_score', 0),
-                'feedback': scores.get('feedback', '')
-            }
+            # application.save()
 
-            try:
-                print(f"MAIL_SERVICE = {NODE_SERVICE_URL}")
-                email_response = httpx.post(
-                    # f"{NODE_SERVICE_URL}send-report",
-                    f"http://localhost:5000/send-report",
-                    json=email_payload,
-                    timeout=30.0
-                )
-                email_response.raise_for_status()
-            except Exception as e:
-                logger.error(f"Failed to send report via Node.js service: {e}")
+            # # 5. Forward scores to Node.js PDF/email service
+            # email_payload = {
+            #     'email': application.user.email,
+            #     'question': scores.get('question', ''),
+            #     'user_answer': scores.get('user_answer', ''),
+            #     'ideal_answer': scores.get('ideal_answer', ''),
+            #     'answer_score': scores.get('answer_score', 0),
+            #     'pronunciation_score': scores.get('pronunciation_score', 0),
+            #     'grammar_score': scores.get('grammar_score', 0),
+            #     'attire_score': scores.get('attire_score', 0),
+            #     'total_score': scores.get('total_score', 0),
+            #     'feedback': scores.get('feedback', '')
+            # }
+
+            # try:
+            #     print(f"MAIL_SERVICE = {NODE_SERVICE_URL}")
+            #     email_response = httpx.post(
+            #         # f"{NODE_SERVICE_URL}send-report",
+            #         f"http://localhost:5000/send-report",
+            #         json=email_payload,
+            #         timeout=30.0
+            #     )
+            #     email_response.raise_for_status()
+            # except Exception as e:
+            #     logger.error(f"Failed to send report via Node.js service: {e}")
 
             # 6. Return results
             return Response({
-                **scores,
-                'video_url': cloudinary_result['url']
+                'message': 'Video submitted successfully and analysis in progress',
             })
 
         except httpx.ConnectError:
