@@ -19,6 +19,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 from user.helpers import jobs_collection
+from django.db.models import Count, Q
 
 FASTAPI_URL = os.environ.get("FAST_API")
 class JobPagination(PageNumberPagination):
@@ -37,7 +38,13 @@ class JobsViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        base_queryset = super().get_queryset()
+
+
+        queryset = base_queryset.annotate(
+            applicant_count=Count('application', filter=~Q(application__status='1'))
+            )
+
 
         # Get the ordering query parameter (if any)
         ordering = self.request.query_params.get('ordering', None)

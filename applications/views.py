@@ -50,6 +50,7 @@ from reportlab.lib.units import inch
 import textwrap
 import json
 from applications.utils import generate_pdf_report, send_email_with_attachment
+from answers.models import Answer
 load_dotenv()
 
 NODE_SERVICE_URL=os.environ.get("MAIL_SERVICE")
@@ -576,7 +577,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             video_file = request.FILES.get('video')
-            question = request.POST.get('question')
+            question_id = request.POST.get('question_id')
 
             if not video_file or not question:
                 return Response(
@@ -591,7 +592,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             payload = {
                 'video_url': cloudinary_result['url'],
                 'job_id': application.job.id,
-                'application_id': application.id
+                'application_id': application.id,
+                'question_id': question_id
             }
 
             
@@ -639,7 +641,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             #     email_response.raise_for_status()
             # except Exception as e:
             #     logger.error(f"Failed to send report via Node.js service: {e}")
-
+            Answer.objects.create(
+                question=question_id,
+                application=application.id,
+                answer_text='submited',
+            )
             # 6. Return results
             return Response({
                 'message': 'Video submitted successfully and analysis in progress',

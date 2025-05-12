@@ -10,9 +10,9 @@ class JobseekerFilter(django_filters.FilterSet):
     seniority = django_filters.BaseInFilter(field_name="seniority", lookup_expr="in")
     track = django_filters.NumberFilter(field_name='track__id')
     branch = django_filters.NumberFilter(field_name='branch__id')
-    track_name = django_filters.CharFilter(field_name='track__name', lookup_expr='icontains')
-    branch_name = django_filters.CharFilter(field_name='branch__name', lookup_expr='icontains')
-    iti_grad_year = django_filters.NumberFilter(field_name="iti_grad_year")
+    track_name = django_filters.BaseInFilter(field_name='track__name', lookup_expr='in')
+    branch_name = django_filters.BaseInFilter(field_name='branch__name', lookup_expr='in')
+    iti_grad_year = django_filters.BaseInFilter(field_name="iti_grad_year", lookup_expr="in")
 
 
     class Meta:

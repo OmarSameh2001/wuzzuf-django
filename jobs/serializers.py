@@ -8,11 +8,12 @@ class JobsSerializer(serializers.ModelSerializer):
     questions = serializers.SerializerMethodField()  # Allow handling multiple questions
     company_name = serializers.ReadOnlyField(source='company.name')
     company_logo = serializers.ReadOnlyField(source='company.img')
+    applicant_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
      
-        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job','attend', 'location',  'status', 'created_at', 'questions', 'specialization']# 'questions',
+        fields = ['id', 'title', 'description', 'company','company_name', 'company_logo', 'experince', 'type_of_job','attend', 'location',  'status', 'created_at', 'questions', 'specialization', 'applicant_count']# 'questions',
 
     def get_questions(self, obj):
         return QuestionSerializer(Question.objects.filter(job=obj), many=True).data
@@ -26,6 +27,10 @@ class JobsSerializer(serializers.ModelSerializer):
             # return obj.company.img.url
         #self.context['request'].build_absolute_uri(obj.company.img.url)
         return None
+
+    def get_applicant_count(self, obj):
+        # Fall back to calculating manually if not annotated
+        return getattr(obj, 'applicant_count', obj.application_set.exclude(status='1').count())
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
