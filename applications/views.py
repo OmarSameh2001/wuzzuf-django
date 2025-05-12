@@ -51,6 +51,7 @@ import textwrap
 import json
 from applications.utils import generate_pdf_report, send_email_with_attachment
 from answers.models import Answer
+from questions.models import Question
 load_dotenv()
 
 NODE_SERVICE_URL=os.environ.get("MAIL_SERVICE")
@@ -570,16 +571,23 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         """Handle video interview submission"""
         try:
             # 1. Get application and validate inputs
-            application = self.get_object()
+            print('oooooo')
+            # application = self.get_object()
+            # print(application)
+            
+            video_file = request.FILES.get('video')
+            question_id = request.data.get('question_id')
+            application_id = request.data.get('application_id')
+            print(application_id)
+            application = Application.objects.get(id=application_id)
             if(application.screening_res is not None):
                 return Response(
                     {'error': 'Video already submitted'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            video_file = request.FILES.get('video')
-            question_id = request.POST.get('question_id')
+            print(video_file, question_id, application)
 
-            if not video_file or not question:
+            if not video_file or not question_id:
                 return Response(
                     {'error': 'Video and question are required'}, 
                     status=status.HTTP_400_BAD_REQUEST
@@ -592,13 +600,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             payload = {
                 'video_url': cloudinary_result['url'],
                 'job_id': application.job.id,
-                'application_id': application.id,
+                'application_id': application_id,
                 'question_id': question_id
             }
 
             
             def analyze_interview(): 
-                httpx.post(
+                requests.post(
                 f"{FASTAPI_URL}/analyze-interview/",
                 json=payload,
                 timeout=120.0
@@ -641,9 +649,10 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             #     email_response.raise_for_status()
             # except Exception as e:
             #     logger.error(f"Failed to send report via Node.js service: {e}")
+            question = Question.objects.get(id=question_id)
             Answer.objects.create(
-                question=question_id,
-                application=application.id,
+                question=question,
+                application=application,
                 answer_text='submited',
             )
             # 6. Return results
@@ -659,7 +668,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Video submission error: {str(e)}")
             return Response(
-                {'error': 'Processing failed'},
+                {'error': 'Processing failed', 'str': {str(e)}},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
