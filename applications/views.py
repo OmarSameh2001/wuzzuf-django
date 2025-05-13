@@ -51,6 +51,7 @@ import textwrap
 import json
 from answers.models import Answer
 from questions.models import Question
+from wuzzuf.queue import send_to_queue
 load_dotenv()
 
 NODE_SERVICE_URL=os.environ.get("MAIL_SERVICE")
@@ -604,14 +605,17 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             }
 
             
-            def analyze_interview(): 
-                requests.post(
-                f"{FASTAPI_URL}/analyze-interview/",
-                json=payload,
-                timeout=120.0
-            )
+            # def analyze_interview(): 
+            #     requests.post(
+            #     f"{FASTAPI_URL}/analyze-interview/",
+            #     json=payload,
+            #     timeout=120.0
+            # )
 
-            threading.Thread(target=analyze_interview).start()
+            send_to_queue('application_queue', 'post', 'analyze-interview/', payload)
+
+
+            # threading.Thread(target=analyze_interview).start()
 
             # # 4. Save results in application
             # application.screening_res = json.dumps({
@@ -836,18 +840,18 @@ def perform_create_for_admin(application):
         if not cv_url:
             raise ValueError("User CV not found")
 
-        ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}"
+        # ats_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}"
         ats_data = {"cv_url": cv_url, "job_id": job_id, "application_id": application.id}
-        def ats_background():
-            try:
-                ats_response = requests.post(ats_url, json=ats_data)
-                ats_result = ats_response.json()
-                if ats_response.status_code != 200:
-                    logger.error(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Error connecting to ATS service: {e}")
-
-        threading.Thread(target=ats_background).start()
+        # def ats_background():
+        #     try:
+        #         ats_response = requests.post(ats_url, json=ats_data)
+        #         ats_result = ats_response.json()
+        #         if ats_response.status_code != 200:
+        #             logger.error(f"ATS Service Error: {ats_result.get('detail', 'Unknown Error')}")
+        #     except requests.exceptions.RequestException as e:
+        #         logger.error(f"Error connecting to ATS service: {e}")
+        send_to_queue('application_queue', 'post', f'ats/{user_id}/{job_id}', ats_data)
+        # threading.Thread(target=ats_background).start()
 
         # application.ats_res = ats_result.get("match_percentage", 0)
     # recommendations_list = recommendations.get("recommendations", [])

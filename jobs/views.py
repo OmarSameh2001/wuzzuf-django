@@ -14,7 +14,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 from user.helpers import user_collection, jobs_collection
-
+from wuzzuf.queue import send_to_queue
+import time
 FASTAPI_URL = os.environ.get("FAST_API")
 
 # def get_recommendationsView(request , user_id ,):
@@ -154,27 +155,35 @@ def get_recommendationsView(request, user_id):
         if page - 1 > page_count / page_size:
             return JsonResponse({"error": "Page number exceeds available pages"}, status=400)
         
-        user_data = user_collection.find_one({"user_id": user_id})
-        
-        if user_data and user_data.get("embedding") and user_data.get("cv_url") == format_cv_url(getattr(cv_url, "url", "")):
-            print("Using stored embedding (CV unchanged)")
-            embedding = user_data["embedding"]
-        else:
-            print("Generating new embedding (CV changed)")
-            fastapi_url = f"{FASTAPI_URL}/user_embedding/?user_id={user_id}&cv_url={cv_url}"
-            print (fastapi_url)
-            try:
-                response = requests.get(fastapi_url)
-                response.raise_for_status()
-                data = response.json()
-                
-                embedding = data.get("embedding")
-            except requests.exceptions.RequestException as e:
-                error_msg = f"FastAPI service error: {str(e)}"
-                if hasattr(e, 'response') and e.response is not None:
-                    error_msg = f"FastAPI error: {e.response.json().get('detail', e.response.text)}"
-                return JsonResponse({"error": error_msg}, status=500)
-                
+        cv = True
+        tries = 0
+        while cv and tries < 5:
+            user_data = user_collection.find_one({"user_id": user_id})
+            print( format_cv_url(user_data.get("cv_url")), format_cv_url(getattr(cv_url, "url", "")))
+            if user_data and user_data.get("embedding") and format_cv_url(user_data.get("cv_url")) == format_cv_url(getattr(cv_url, "url", "")):
+                print("Using stored embedding (CV unchanged)")
+                embedding = user_data["embedding"]
+                cv = False
+            else:
+                print("Generating new embedding (CV changed)")
+                # fastapi_url = f"{FASTAPI_URL}/user_embedding/?user_id={user_id}&cv_url={cv_url}"
+                if(tries == 0): 
+                    send_to_queue('user_queue', "get", f"user_embedding/?user_id={user_id}&cv_url={cv_url}", {'user_id': user_id, "cv_url": cv_url.url})
+                time.sleep(2)
+
+                # print (fastapi_url)
+                # try: send_to_queue("job_queue", fastapi_data, "put", f"jobs/{pk}")
+                #     response = requests.get(fastapi_url)
+                #     response.raise_for_status()
+                #     data = response.json()
+                    
+                #     embedding = data.get("embedding")
+                # except requests.exceptions.RequestException as e:
+                #     error_msg = f"FastAPI service error: {str(e)}"
+                #     if hasattr(e, 'response') and e.response is not None:
+                #         error_msg = f"FastAPI error: {e.response.json().get('detail', e.response.text)}"
+                #     return JsonResponse({"error": error_msg}, status=500)
+            tries += 1
         
         recommendations = recommendation_vector_search(embedding, page, page_size, match_conditions)
         
@@ -190,52 +199,52 @@ def get_recommendationsView(request, user_id):
     except Exception as e:
         return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
 
-def ats_match(request, user_id, job_id):
-    print("user_id", user_id)
-    print("job_id", job_id)
-    try:
-        user = User.objects.get(id=user_id)
-        print("user", user)
-    except User.DoesNotExist:
-        return JsonResponse({"error": "User not found"}, status=404)
+# def ats_match(request, user_id, job_id):
+#     print("user_id", user_id)
+#     print("job_id", job_id)
+#     try:
+#         user = User.objects.get(id=user_id)
+#         print("user", user)
+#     except User.DoesNotExist:
+#         return JsonResponse({"error": "User not found"}, status=404)
 
-    try:
-        job = Job.objects.get(id=job_id)
-        print("job", job)
-    except Job.DoesNotExist:
-        return JsonResponse({"error": "Job not found"}, status=404)
+#     try:
+#         job = Job.objects.get(id=job_id)
+#         print("job", job)
+#     except Job.DoesNotExist:
+#         return JsonResponse({"error": "Job not found"}, status=404)
 
-    if not user.cv:
-            # 3ayza  haga ttla3 f el front msg en el cv not found => ta2reban kda    
-           return JsonResponse({"error": "User CV not found", "message": "Please upload a CV before applying."}, status=400)
+#     if not user.cv:
+#             # 3ayza  haga ttla3 f el front msg en el cv not found => ta2reban kda    
+#            return JsonResponse({"error": "User CV not found", "message": "Please upload a CV before applying."}, status=400)
 
-    fastapi_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
-    print("fastapi_url", fastapi_url)
+#     fastapi_url = f"{FASTAPI_URL}/ats/{user_id}/{job_id}/"
+#     print("fastapi_url", fastapi_url)
 
-    cv_url = str(user.cv) if user.cv else None
-    print("cv_url", cv_url)
+#     cv_url = str(user.cv) if user.cv else None
+#     print("cv_url", cv_url)
    
-    payload = {
-        "cv_url": cv_url,
-        "job_id": job.id,
-        # "job_title": job.title,
-        # "job_description": job.description
-    }
-    print("payload", payload)
+#     payload = {
+#         "cv_url": cv_url,
+#         "job_id": job.id,
+#         # "job_title": job.title,
+#         # "job_description": job.description
+#     }
+#     print("payload", payload)
 
-    try:
-        response = requests.post(fastapi_url, json=payload, timeout=30)
+#     try:
+#         response = requests.post(fastapi_url, json=payload, timeout=30)
 
-        print("response", response)
-        response_data = response.json()
-        print("response_data", response_data)
-        if not isinstance(response_data, dict):
-            return JsonResponse({"error": "Unexpected response format from FastAPI"}, status=500)
+#         print("response", response)
+#         response_data = response.json()
+#         print("response_data", response_data)
+#         if not isinstance(response_data, dict):
+#             return JsonResponse({"error": "Unexpected response format from FastAPI"}, status=500)
 
-        return JsonResponse(response_data, status=200)
+#         return JsonResponse(response_data, status=200)
 
-    except requests.exceptions.RequestException as e:
-        return JsonResponse({"error": "FastAPI request failed", "details": str(e)}, status=500)
+#     except requests.exceptions.RequestException as e:
+#         return JsonResponse({"error": "FastAPI request failed", "details": str(e)}, status=500)
 def get_talentsView(request, job_id):
     try:
         if not job_id:

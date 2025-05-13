@@ -46,12 +46,17 @@ from dotenv import load_dotenv
 import requests
 from pymongo import MongoClient
 from bson import ObjectId
+import random
+from wuzzuf.queue import send_to_queue
+from .utils import parse_cv
 
-FASTAPI_URL = "http://127.0.0.1:8001"
+# FASTAPI_URL = "http://127.0.0.1:8001"
 load_dotenv()
 
 
 FASTAPI_URL = os.getenv('FAST_API')
+FRONT_URL = os.getenv('FRONT_URL')
+
 
 User = get_user_model()
 
@@ -122,11 +127,12 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
          # Inline call to Node.js mailer endpoint
         try:
-            response = requests.post(
-                os.getenv('MAIL_SERVICE') + "send-verification-email",
-                json={"email": company.email, "name": company.name}
-            )
-            response.raise_for_status()
+            # response = requests.post(
+            #     os.getenv('MAIL_SERVICE') + "send-verification-email",
+            #     json={"email": company.email, "name": company.name}
+            # )
+            send_to_queue("email_queue", 'post', 'send-verification-email', {"email": company.email, "name": company.name})
+            # response.raise_for_status()
             print(f"Verification email sent to {company.email}")
             email_sent = True
         except Exception as e:
@@ -312,9 +318,11 @@ class UserCreateView(generics.CreateAPIView):
 
     def send_otp(self, email, name):                
         try:
-            response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name})
-            response.raise_for_status()
-            otp = response.json().get("otp")
+            otp = random.randint(100000, 999999)
+            # response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name, "otp": otp})
+            send_to_queue("email_queue",'post', 'send-otp', {"email": email, "name": name, "otp": otp})
+            # response.raise_for_status()
+            # otp = response.json().get("otp")
             print(f"OTP sent via Node.js: {otp}")
             return otp
         except Exception as e:
@@ -353,9 +361,11 @@ class ResendOTPView(APIView):
 
     def send_otp(self, email, name):
         try:
-            response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name})
-            response.raise_for_status()
-            otp = response.json().get("otp")
+            otp = random.randint(100000, 999999)
+            # response = requests.post(os.getenv('MAIL_SERVICE') + "send-otp", json={"email": email, "name": name})
+            # response.raise_for_status()
+            # otp = response.json().get("otp")
+            send_to_queue("email_queue",'post', 'send-otp', {"email": email, "name": name, "otp": otp})
             print(f"OTP sent via Node.js: {otp}")
             return otp
         except Exception as e:
@@ -411,7 +421,7 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if ('name' in data and data['name'] != user.name) or ('img' in data and data['img'] != user.img) and user.user_type == 'COMPANY':
             update_company_mongo(data, user)
             
-        print("data", data['img'])
+        # print("data", data['img'])
         serializer = self.get_serializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -458,6 +468,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         data = {}
         if(update == 'false'):
             update = False
+        about_summary = {}
         
         
         for key in request.data:
@@ -494,18 +505,23 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                
                if update:
                     try:
-                        extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}"
-                        print ("🧠 Extract URL:", extract_url)
-                        response = requests.get(extract_url)
+                        # extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}"
+                        # print ("🧠 Extract URL:", extract_url)
+                        # response = requests.get(extract_url)
+                        # extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}&update=False"
+                        send_to_queue("user_queue", 'get', 'extract-cv-data', {"cv_url": cv_url.url, "user_id": user.id, "update": False})
+                        response = parse_cv(cv_url, user.id)
                         print ("🧠 Response from CV:", response)
-                        response.raise_for_status()
-                        parsed_data = response.json()
+                        # response.raise_for_status()
+                        parsed_data = response
                         # print("🧠 Parsed Data from CV:", parsed_data)
 
                         # Fill profile fields from parsed 
                         # Flatten and JSON encode the lists
-                        data['about'] = parsed_data.get("About", "") 
-                        data['summary'] = parsed_data.get("Summary", "")
+                        # data['about'] = parsed_data.get("About", "") 
+                        # data['summary'] = parsed_data.get("Summary", "")
+                        about_summary['about'] = parsed_data.get("About", "")
+                        about_summary['summary'] = parsed_data.get("Summary", "")
 
                         parsed_skills = parsed_data.get("Skills", [])
                         parsed_education = parsed_data.get("Education", [])
@@ -520,7 +536,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                         
                         print ("education", data['education'])
                         print ("experience", data['experience'])
-                        print ("about", data['about'])
+                        # print ("about", data['about'])
                         print ("skills", data['skills'])
                         # print("🔵 data:", data)
                     except Exception as e:
@@ -554,10 +570,10 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                             
             
                     
-            print("✅ Final Payload to Serializer:")
-            for k, v in data.items():
-                print(f"{k}: ({type(v)}) {v}")
-                print("✅ Final Payload to Serializer:")
+            # print("✅ Final Payload to Serializer:")
+            # for k, v in data.items():
+            #     print(f"{k}: ({type(v)}) {v}")
+            #     print("✅ Final Payload to Serializer:")
         
                     
             
@@ -582,14 +598,17 @@ class JobseekerViewSet(viewsets.ModelViewSet):
 
             # Save the updated instance
             seeker = serializer.save()  # This will save the instance
-            print("seeker", seeker.cv)
-            print("✅ Profile Saved:", seeker.about, seeker.skills)
+            # print("seeker", seeker.cv)
+            # print("✅ Profile Saved:", seeker.about, seeker.skills)
             self.perform_update(serializer)
 
             # Debug: Print the updated data
-            print("🔵 serializer.data:", serializer.data)
+            # print("🔵 serializer.data:", serializer.data)
 
-            return Response(serializer.data)
+            if(about_summary != {}):
+                return Response({'user': serializer.data, 'about_summary': about_summary})
+            else:
+                return Response(serializer.data)
     
         except Exception as e:
           print(f"🔴 Error during update: {str(e)}")
@@ -633,7 +652,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         if user.name != data['name'] or user.img != data['img']:
             update_company_mongo(data)
             
-        print("data", data['img'])
+        # print("data", data['img'])
         serializer = self.get_serializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -729,19 +748,20 @@ class PasswordResetRequestView(APIView):
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         token = default_token_generator.make_token(user)
-        reset_url = f"http://localhost:5173/reset-password/{user.email}?token={token}"
+        reset_url = f"{FRONT_URL}/reset-password/{user.email}?token={token}"
 
         # Send the password reset email using Node.js server
         try:
-            response = requests.post(
-                os.getenv('MAIL_SERVICE') + "send-password-reset",
-                json={
-                    "email": user.email,
-                    "name": user.name,
-                    "resetUrl": reset_url
-                }
-            )
-            response.raise_for_status()
+            # response = requests.post(
+            #     os.getenv('MAIL_SERVICE') + "send-password-reset",
+            #     json={
+            #         "email": user.email,
+            #         "name": user.name,
+            #         "resetUrl": reset_url
+            #     }
+            # )
+            # response.raise_for_status()
+            send_to_queue('email_queue', 'post', 'send-password-reset', {"email": user.email, "name": user.name, "resetUrl": reset_url})
             print(f"Password reset email sent to {user.email}")
 
             # Optionally record timestamp

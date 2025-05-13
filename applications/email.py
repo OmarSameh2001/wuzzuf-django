@@ -4,17 +4,19 @@ import requests
 import threading
 import os
 from dotenv import load_dotenv
+from wuzzuf.queue import send_to_queue
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 def _post_fire_and_forget(url, data):
-    def task():
-        try:
-            requests.post(url, json=data)
-        except Exception as e:
-            logger.error(f"Failed to send request to {url}: {e}")
-    threading.Thread(target=task).start()
+    # def task():
+    #     try:
+    #         requests.post(url, json=data)
+    #     except Exception as e:
+    #         logger.error(f"Failed to send request to {url}: {e}")
+    # threading.Thread(target=task).start()
+    send_to_queue('email_queue', 'post', url, data)
 
 def send_bulk_application_emails(applications, status_text=None, fail=False):
     application_list = []
@@ -36,7 +38,8 @@ def send_bulk_application_emails(applications, status_text=None, fail=False):
             "company_email": applications.job.company.email,
         })
 
-    url = os.getenv("MAIL_SERVICE") + "/send-bulk-email"
+    # url = os.getenv("MAIL_SERVICE") + "/send-bulk-email"
+    url = 'send-bulk-email'
     data = {
         "applications": application_list,
         "status_text": status_text,
@@ -45,7 +48,8 @@ def send_bulk_application_emails(applications, status_text=None, fail=False):
     _post_fire_and_forget(url, data)
 
 def send_schedule_email(user, company, phase, link, time):
-    url = os.getenv("MAIL_SERVICE") + "/send-schedule-email"
+    # url = os.getenv("MAIL_SERVICE") + "/send-schedule-email"
+    url = 'send-schedule-email'
     data = {
         "user_email": user.email,
         "user_name": user.name,
@@ -58,7 +62,8 @@ def send_schedule_email(user, company, phase, link, time):
     _post_fire_and_forget(url, data)
 
 def send_status_email(user, company, phase, link, time):
-    url = os.getenv("MAIL_SERVICE") + "/send-dynamic-email"
+    # url = os.getenv("MAIL_SERVICE") + "/send-dynamic-email"
+    url = 'send-dynamic-email'
     data = {
         "user_email": user.email,
         "user_name": user.name,
@@ -70,7 +75,8 @@ def send_status_email(user, company, phase, link, time):
     }
     _post_fire_and_forget(url, data)
 def send_contract(application):
-    url = os.getenv("MAIL_SERVICE") + "/send-contract"
+    # url = os.getenv("MAIL_SERVICE") + "/send-contract"
+    url = 'send-contract'
     data = {
         "user_email": application.user.email,
         "user_name": application.user.name,

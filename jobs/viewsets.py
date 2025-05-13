@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from user.helpers import jobs_collection
 from django.db.models import Count, Q
+from wuzzuf.queue import send_to_queue
 
 FASTAPI_URL = os.environ.get("FAST_API")
 class JobPagination(PageNumberPagination):
@@ -80,7 +81,7 @@ class JobsViewSet(viewsets.ModelViewSet):
         #   print ("serializer", serializer)
           if serializer.is_valid():
             job_instance = serializer.save()
-            print ("job_instanceeeeeeeeeeeeeeeeeeeeeeeeeeeeee", job_instance)
+            # print ("job_instanceeeeeeeeeeeeeeeeeeeeeeeeeeeeee", job_instance)
             if questions_data: 
                for question_data in questions_data:
                  Question.objects.create(job=job_instance, **question_data)
@@ -103,17 +104,18 @@ class JobsViewSet(viewsets.ModelViewSet):
                 ) if job_instance.company.img else None,
             }
 
-            print("company_instance", job_instance.company)
-            print("fastapi_data", fastapi_data)
+            # print("company_instance", job_instance.company)
+            # print("fastapi_data", fastapi_data)
             
             try:
-                response = requests.post(FASTAPI_URL + "/jobs", json=fastapi_data)
-                response.raise_for_status()  # Raise an exception for 4xx/5xx responses
+                # response = requests.post(FASTAPI_URL + "/jobs", json=fastapi_data)
+                send_to_queue("job_queue", "post", "jobs", fastapi_data)
+                # response.raise_for_status()  # Raise an exception for 4xx/5xx responses
                 
-                fastapi_response = response.json()
-                print("fastapi_response", fastapi_response)
+                # fastapi_response = response.json()
+                # print("fastapi_response", fastapi_response)
                 
-                return Response({"django_job": serializer.data, "fastapi_job": fastapi_response}, status=201)
+                return Response({"django_job": serializer.data}, status=201)
             
             except requests.exceptions.RequestException as e:
                 print("FastAPI request error:", e)
@@ -194,9 +196,10 @@ class JobsViewSet(viewsets.ModelViewSet):
             ) if updated_job.company.img else None,
           }
         try:
-            fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
-            fastapi_response.raise_for_status()
-        except requests.exceptions.RequestException as e:
+            # fastapi_response = requests.put(f"{FASTAPI_URL}/{pk}", json=fastapi_data)
+            # fastapi_response.raise_for_status()
+            send_to_queue("job_queue", "put", f"jobs/{pk}", fastapi_data)
+        except Exception as e:
             return Response({"success": "Update successful but failed to connect to FastAPI", "error": str(e)}, status=200)
 
         return Response(serializer.data)
