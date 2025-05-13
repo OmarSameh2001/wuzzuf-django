@@ -49,7 +49,6 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 import textwrap
 import json
-from applications.utils import generate_pdf_report, send_email_with_attachment
 from answers.models import Answer
 from questions.models import Question
 load_dotenv()
