@@ -456,6 +456,8 @@ class JobseekerViewSet(viewsets.ModelViewSet):
         else:
             update = True
         data = {}
+        if(update == 'false'):
+            update = False
         
         
         for key in request.data:
