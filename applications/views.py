@@ -591,7 +591,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                     {'error': 'Video and question are required'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
+            question = Question.objects.get(id=question_id)
             # 2. Upload video to Cloudinary
             cloudinary_result = upload_video(video_file)
 
@@ -600,7 +600,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 'video_url': cloudinary_result['url'],
                 'job_id': application.job.id,
                 'application_id': application_id,
-                'question_id': question_id
+                'question_id': question_id,
+                'question_text': question.text,
             }
 
             
@@ -648,7 +649,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             #     email_response.raise_for_status()
             # except Exception as e:
             #     logger.error(f"Failed to send report via Node.js service: {e}")
-            question = Question.objects.get(id=question_id)
+    
+      ##################un comment this part if you want to save the answer in the database###############        
             Answer.objects.create(
                 question=question,
                 application=application,
