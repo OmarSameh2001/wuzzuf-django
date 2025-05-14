@@ -14,7 +14,7 @@ def upload_video(file):
             folder="interview_videos",
             # folder=settings.CLOUDINARY['folder'],
             allowed_formats=["webm", "mp4"],
-            timeout=30
+            timeout=60
         )
         return   result
         #  {
