@@ -595,7 +595,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             question = Question.objects.get(id=question_id)
             # 2. Upload video to Cloudinary
             cloudinary_result = upload_video(video_file)
-
+            #print('cloudinary_result',cloudinary_result)
             # 3. Send video URL + question to FastAPI for analysis
             payload = {
                 'video_url': cloudinary_result['url'],

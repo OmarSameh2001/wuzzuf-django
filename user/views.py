@@ -509,7 +509,7 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                         # print ("🧠 Extract URL:", extract_url)
                         # response = requests.get(extract_url)
                         # extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}&update=False"
-                        send_to_queue("user_queue", 'get', 'extract-cv-data', {"cv_url": cv_url.url, "user_id": user.id, "update": False})
+                        send_to_queue("user_queue", 'get', 'extract-cv-data', {"cv_url": cv_url if isinstance(cv_url, str) else cv_url.url, "user_id": user.id, "update": False})
                         response = parse_cv(cv_url, user.id)
                         print ("🧠 Response from CV:", response)
                         # response.raise_for_status()
