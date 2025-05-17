@@ -830,6 +830,23 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         print(application)
         send_contract(application)
         return Response({"message": "Contract set successfully"})
+    @action(detail=False, methods=['get'])
+    def job_status(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        applications = Application.objects.filter(user_id=user_id)
+        if not applications.exists():
+            return Response({"error": "No applications found for this user"}, status=status.HTTP_404_NOT_FOUND)
+        data = []
+        for app in applications:
+            data.append({
+                'job_id': app.job.id,
+                'status': app.status,
+                'app_id': app.id
+            })
+        return Response(data)
 
 
  
