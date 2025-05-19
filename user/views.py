@@ -543,10 +543,10 @@ class JobseekerViewSet(viewsets.ModelViewSet):
                         print("🔴 CV Parsing Failed:", str(e))
                else:
                     # Update cv without extracting data
-                    extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}&update=False"
-                    response = requests.get(extract_url)
+                    # extract_url = f"{FASTAPI_URL}/extract-cv-data/?cv_url={cv_url}&user_id={user.id}&update=False"
+                    # response = requests.get(extract_url)
+                    send_to_queue("user_queue", 'get', 'extract-cv-data', {"cv_url": cv_url if isinstance(cv_url, str) else cv_url.url, "user_id": user.id, "update": False})
                             
-               
                
             elif 'cv' in data and data['cv'] == '':  # Check for empty string
                 data['cv'] = None    

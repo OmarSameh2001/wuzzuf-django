@@ -12,4 +12,4 @@ class ApplicationFilter(django_filters.FilterSet):
     
     class Meta:
         model = Application
-        fields = ['user', 'job', 'status', 'company', 'company_name', 'job_title']
+        fields = ['user', 'job', 'status', 'company', 'company_name', 'job_title', 'fail']
