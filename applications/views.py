@@ -296,7 +296,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({"error": "Missing or invalid interview details"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            interview_time = make_aware(datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
+            interview_time = make_aware(datetime.datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
         except ValueError:
             return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -654,7 +654,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             # except Exception as e:
             #     logger.error(f"Failed to send report via Node.js service: {e}")
     
-      ##################un comment this part if you want to save the answer in the database###############        
+      ##################un comment this part if you don't want to save the answer in the database###############        
             Answer.objects.create(
                 question=question,
                 application=application,
@@ -830,23 +830,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         print(application)
         send_contract(application)
         return Response({"message": "Contract set successfully"})
-    @action(detail=False, methods=['get'])
-    def job_status(self, request):
-        user_id = request.query_params.get('user_id')
-        if not user_id:
-            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        applications = Application.objects.filter(user_id=user_id)
-        if not applications.exists():
-            return Response({"error": "No applications found for this user"}, status=status.HTTP_404_NOT_FOUND)
-        data = []
-        for app in applications:
-            data.append({
-                'job_id': app.job.id,
-                'status': app.status,
-                'app_id': app.id
-            })
-        return Response(data)
 
 
  
@@ -918,5 +901,5 @@ async def perform_create_async(application):
     #     job.get("id") or job.get("_id") for job in recommendations_list if job.get("id") is not None or job.get("_id") is not None
     # ])
 
-    return ats_result, recommendations
+    return ats_result#, recommendations
  

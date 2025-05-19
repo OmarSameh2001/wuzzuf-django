@@ -168,6 +168,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'id',
             'email', 
             'name',
+            'about',
             'est', 
             'industry', 
             'img',
