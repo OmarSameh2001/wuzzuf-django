@@ -296,7 +296,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({"error": "Missing or invalid interview details"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            interview_time = make_aware(datetime.datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
+            interview_time = make_aware(datetime.strptime(interview_time_str, "%Y-%m-%d %H:%M"))
         except ValueError:
             return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
 
