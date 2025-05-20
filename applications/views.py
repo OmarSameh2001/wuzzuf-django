@@ -586,7 +586,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             print(video_file, question_id, application)
-
+             
+            applicant_email = application.user.email
+             
             if not video_file or not question_id:
                 return Response(
                     {'error': 'Video and question are required'}, 
@@ -601,6 +603,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 'video_url': cloudinary_result['url'],
                 'job_id': application.job.id,
                 'application_id': application_id,
+                'applicant_email': applicant_email,
                 'question_id': question_id,
                 'question_text': question.text,
             }
