@@ -303,7 +303,8 @@ def get_talentsView(request, job_id):
                     "id": '$user_id',
                     "ats_res": { "$meta": "vectorSearchScore" },
                     "name": 1,
-                    "email": 1
+                    "email": 1,
+                    "seniority": 1
                  }
             },
             {"$skip": skip},  # Skip previous pages
@@ -318,6 +319,8 @@ def get_talentsView(request, job_id):
         if not results or len(results) == 0:
             return JsonResponse({"error": "No matching talents found"}, status=404)
         # print(results)
+        if filters and "seniority" in filters:
+            page_count = user_collection.count_documents({'embedding': {'$exists': True}, 'seniority': {'$in': filters['seniority']['$in']}})
         return JsonResponse({
             "count": page_count if page_count < 100 else 100,
             "results": results
