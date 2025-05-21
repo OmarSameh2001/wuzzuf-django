@@ -403,10 +403,12 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 for app in fail_apps:
                     app.fail = True
                     app.save()
+
+                fail_count = len(fail_apps)
                     
                 email_errors_fail = []
                 if fail:
-                      email_errors_fail = send_bulk_application_emails(failed_apps, fail=True)
+                      email_errors_fail = send_bulk_application_emails(fail_apps, fail=True)
             
             return Response({
                 'message': f'{len(success_apps)} applicants updated, {fail_count} marked as failed.',
