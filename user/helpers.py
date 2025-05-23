@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 import threading
 import requests
+from cloudinary.uploader import upload
+from wuzzuf.queue import send_to_queue
 
 load_dotenv()
 
@@ -60,23 +62,18 @@ def update_jobseeker_mongo(data, user):
         },
     )
 
-def send_rag(url, file):
+def send_rag(file, chunk_size=500, chunk_overlap=50):
     files = {"pdf": file}
-    # def task():
-    #     try:
-    #         response = requests.post(url, files=files)
-    #         response.raise_for_status()
-    #         rag = response.json()
-    #         rag_collection.insert_one(rag)
-    #     except Exception as e:
-    #         print(f"Failed to send rag to {url}: {e}")
-    #     finally:
-    #         file.close()
-    # threading.Thread(target=task).start()
     try:
-        response = requests.post(url, files=files)
-        response.raise_for_status()
-        # rag = response.json()
-        # rag_collection.insert_one(rag)
+        uploaded_file = upload(file, resource_type="raw")
+        data = {
+            "name": uploaded_file["original_filename"],
+            "url": uploaded_file["secure_url"],
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap
+        }
+        print("data", data)
+        send_to_queue("job_queue", "post", "rag", data)
+
     except Exception as e:
-        print(f"Failed to send rag to {url}: {e}")
+        print(f"Failed to send rag : {e}")

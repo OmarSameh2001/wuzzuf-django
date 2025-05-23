@@ -52,6 +52,7 @@ import json
 from answers.models import Answer
 from questions.models import Question
 from wuzzuf.queue import send_to_queue
+from django.db.models import Case, When, F, FloatField
 load_dotenv()
 
 NODE_SERVICE_URL=os.environ.get("MAIL_SERVICE")
@@ -368,6 +369,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             old_status = request.data.get('old_status')
             company = request.data.get('company')
             job = request.data.get('job')
+            combine = request.data.get('combine', False) in ['true', 'True', True, '1', 1]
         
 
             # print(ats)
@@ -376,13 +378,29 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             if old_status is None:
                 return Response({'error': 'old_status is required'}, status=status.HTTP_400_BAD_REQUEST)
         # Process success
-            success_apps = list(Application.objects.filter(
-                ats_res__gte=ats, 
-                status=old_status, 
-                job__company=company, 
-                job__id=job, 
-                fail=False
-            ))
+            if combine:
+                success_apps = list(Application.objects.filter(
+                    status=old_status, 
+                    job__company=company, 
+                    job__id=job, 
+                    fail=False
+                ).annotate(
+                    combined_score=Case(
+                        When(screening_res__isnull=False, then=(F('ats_res') + F('screening_res')) / 2),
+                        default=F('ats_res'),
+                        output_field=FloatField()
+                    )
+                ).filter(
+                    combined_score__gte=ats
+                ))
+            else:
+                success_apps = list(Application.objects.filter(
+                    ats_res__gte=ats, 
+                    status=old_status, 
+                    job__company=company, 
+                    job__id=job, 
+                    fail=False
+                ))
             
             for app in success_apps:
               app.status = new_status
@@ -394,13 +412,29 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             fail_count = 0
             email_errors_fail = []
             if fail:
-                fail_apps = list(Application.objects.filter(
-                    ats_res__lt=ats, 
-                    status=old_status, 
-                    job__company=company, 
-                    job__id=job, 
-                    fail=False
-                ))
+                if combine:
+                    fail_apps = list(Application.objects.filter(
+                        status=old_status, 
+                        job__company=company, 
+                        job__id=job, 
+                        fail=False
+                    ).annotate(
+                        combined_score=Case(
+                            When(screening_res__isnull=False, then=(F('ats_res') + F('screening_res')) / 2),
+                            default=F('ats_res'),
+                            output_field=FloatField()
+                        )
+                    ).filter(
+                        combined_score__lt=ats
+                    ))
+                else:
+                    fail_apps = list(Application.objects.filter(
+                        ats_res__lt=ats, 
+                        status=old_status, 
+                        job__company=company, 
+                        job__id=job, 
+                        fail=False
+                    ))
                 
                 for app in fail_apps:
                     app.fail = True
@@ -411,6 +445,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 email_errors_fail = []
                 if fail:
                       email_errors_fail = send_bulk_application_emails(fail_apps, fail=True)
+            if int(len(success_apps)) == 0 and int(fail_count) == 0:
+                return Response({
+                    'message': 'No applications with score ' + str(ats) + ' found for ' + str(company) + ' ' + str(job),
+                    'fail':'true'
+                })
             
             return Response({
                 'message': f'{len(success_apps)} applicants updated, {fail_count} marked as failed.',
@@ -419,155 +458,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
            return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-        #     try:
-        #         updated_count = 0
-        #         # Filter applicants
-        #         applicants = Application.objects.filter(ats_res__gte=ats, status=old_status, job__company=company, job__id=job, fail=False)
-                
-        #         # Update and count affected applicants
-        #         updated_count = applicants.update(status=new_status)
-        #     except Exception as e:
-        #         return Response({'error': f'Error updating applicants: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-        #     try:
-        #         fail_count = 0
-        #         if fail:
-        #             fail_applicants = Application.objects.filter(ats_res__lt=ats, status=old_status, job__company=company, job__id=job, fail=False)
-        #             fail_count = fail_applicants.update(fail=True)
-        #     except Exception as e:
-        #         return Response({'error': f'Error marking applicants as failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-        #     return Response({
-        #         'message': f'{updated_count} applicants updated, {fail_count} marked as failed.',
-        #         'ATS': ats,
-        #         'new_status': new_status
-        #     })
-        # except Exception as e:
-        #     return Response({'error': f'Error processing request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-    # @action(detail=True, methods=['post'])
-    # @parser_classes([MultiPartParser, FormParser])
-    # def submit_video(self, request, pk=None):
-    #     """Handle video interview submission"""
-    #     try:
-    #         # 2. Get application and validate inputs
-    #         application = self.get_object()
-    #         print(application)
-    #         video_file = request.FILES.get('video')
-    #         # print(video_file)
-    #         question = request.POST.get('question')
-    #         print(question)
-    #         if not video_file or not question:
-    #             return Response(
-    #                 {'error': 'Video and question are required'}, 
-    #                 status=status.HTTP_400_BAD_REQUEST
-    #             )
-
-    #         # 3. Upload to Cloudinary
-    #         cloudinary_result = upload_video(video_file)
-    #         # print('cloudinary_result',cloudinary_result)
-            
-    #         # 4. Send to FastAPI for analysis
-    #         payload = {
-    #             'video_url': cloudinary_result['url'],
-    #             'question': question,
-    #             'job_description': application.job.description
-    #         }
-    #         # print("PAYLOAD",payload)
-    #         response = httpx.post(
-    #             f"{FASTAPI_URL}/analyze-interview/",
-    #             json=payload,
-    #             timeout=120.0
-    #         )
-    #         print("FASTAPI RESPONSE",response)
-        
-    #         response.raise_for_status()
-    #         scores = response.json()
-           
-    #         # 5. Save results and generate report
-
-    #         application.screening_res = json.dumps({
-    #             'total_score': scores.get('total_score', 0),
-    #             # 'cloudinary_data': cloudinary_result,
-    #             # 'analysis_date': datetime.now().isoformat()
-    #         })
-
-    #         if scores.get('total_score', 0) >= 60:
-    #             application.status = str(int(application.status) + 1)
-
-    #         application.save()
-
-    #         # Generate and email PDF
-    #         pdf_filename = f"interview_report_{application.user.name}.pdf"
-             
-    #         # # Use temporary directory context manager
-    #         # with tempfile.TemporaryDirectory() as tmpdirname:
-    #         #     pdf_path = os.path.join(tmpdirname, pdf_filename)
-                
-    #         # In your Django view:
-    #         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
-    #             pdf_path = tmp_file.name 
-    #         # Attempt PDF generation
-    #         if generate_pdf_report(scores, pdf_path):
-    #             # Track email success
-    #             email_sent = send_email_with_attachment(
-    #                 to_email=application.user.email,
-    #                 subject="Your Interview Analysis Report",
-    #                 data={
-    #                     'question': scores.get('question', ''),
-    #                     'user_answer': scores.get('user_answer', ''),
-    #                     'ideal_answer': scores.get('ideal_answer', ''),
-    #                     'answer_score': scores.get('answer_score', 0),
-    #                     'pronunciation_score': scores.get('pronunciation_score', 0),
-    #                     'grammar_score': scores.get('grammar_score', 0),
-    #                     'eye_contact_score': scores.get('eye_contact_score', 0),
-    #                     'attire_score': scores.get('attire_score', 0),
-    #                     'total_score': scores.get('total_score', 0),
-    #                     'feedback': scores.get('feedback', '')
-    #                     },
-    #                 attachment_path=pdf_path
-    #             )
-    #             try:
-    #                 os.unlink(pdf_path)  # Clean up the temp file
-    #             except OSError:
-    #                 logger.error(f"Failed to delete temp file: {str(e)}")
-                
-    #             if not email_sent:
-    #                 logger.warning("Analysis succeeded but email failed")
-    #         else:
-    #             logger.error("PDF generation failed completely")
-
-    #     #     # 5. Save results
-    #     #     application.screening_res = json.dumps({
-    #     #         'video_analysis': scores,
-    #     #         'cloudinary_data': cloudinary_result,
-    #     #         'analysis_date': datetime.now().isoformat()
-    #     #     })
-            
-    #     #     if scores.get('total_score', 0) >= 70:
-    #     #         application.status = str(int(application.status) + 1)
-            
-    #     #     application.save()
-
-    #         # 6. Return results
-    #         return Response({
-    #             **scores,
-    #             'video_url': cloudinary_result['url']
-    #         })
-
-    #     except httpx.ConnectError:
-    #         return Response(
-    #             {'error': 'Analysis service unavailable'},
-    #             status=status.HTTP_503_SERVICE_UNAVAILABLE
-    #         )
-    #     except Exception as e:
-    #         logger.error(f"Video submission error: {str(e)}")
-    #         return Response(
-    #             {'error': 'Processing failed'},
-    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
-    #         )
-
         
     @action(detail=True, methods=['post'])
     @parser_classes([MultiPartParser, FormParser])

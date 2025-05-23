@@ -895,8 +895,9 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
                 date = rag_name['created_at'].strftime('%Y-%m-%d %I:%M %p GMT')
                 return Response({"message": f"Pdf with this name already uploaded on {date}"}, status=status.HTTP_400_BAD_REQUEST)
             try:
-                url = FASTAPI_URL + "/rag"
-                send_rag(url, file)
+                chunk_size = request.data.get("chunk_size", 500)
+                chunk_overlap = request.data.get("chunk_overlap", 50)
+                send_rag(file, chunk_size, chunk_overlap)
                 return Response({"message": "PDF uploaded successfully, processing in background"}, status=status.HTTP_200_OK)
             except Exception as e:
                 print(f"Error processing PDF: {e}")
@@ -921,24 +922,14 @@ class UserQuestionsViewSet(viewsets.GenericViewSet):
         try:
             print("request.query_params",  request.query_params["id"])
             if request.query_params.get("id"):
-                rag = rag_names_collection.find_one({"_id": ObjectId(request.query_params["id"])})
+                rag_names_collection.delete_one({"_id": ObjectId(request.query_params["id"])})
             elif request.query_params.get("name"):
-                rag = rag_names_collection.find_one({"name": request.query_params["name"]})
+                rag_names_collection.delete_one({"name": request.query_params["name"]})
             else:
                 return Response({"message": "No id or name provided"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            if not rag:
-                return Response({"message": "Rag not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            result = rag_names_collection.delete_one({"_id": ObjectId(rag["_id"])})
-            if result.deleted_count == 0:
-                return Response({"message": "Rag not found"}, status=status.HTTP_404_NOT_FOUND)
-            
-            
-            name = rag["name"]
+            name = request.query_params["name"] if request.query_params.get("name") else ''
             result_embed = rag_collection.delete_many({"metadata": name})
-            if result_embed.deleted_count == 0:
-                return Response({"message": "No embedded documents found for the given RAG"}, status=status.HTTP_404_NOT_FOUND)
             
             return Response({"message": "Rag and its embedded documents deleted successfully"})
         except Exception as e:
