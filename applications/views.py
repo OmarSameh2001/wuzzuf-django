@@ -25,7 +25,7 @@ from rest_framework.decorators import api_view
 import cloudinary.uploader
 from datetime import datetime
 from io import StringIO
-from .email import send_bulk_application_emails, send_schedule_email, send_contract
+from .email import send_bulk_application_emails, send_schedule_email, send_contract, send_assessment_email
 from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 logger = logging.getLogger(__name__)
@@ -76,7 +76,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         3: "Technical Assessment",
         4: "Technical Interview",
         5: "HR Interview",
-        6: "Offer Interview"
+        6: "Offer Interview",
+        7: "Contract Signing",
     }
     FAILURE_MESSAGES = {
         3: "We regret to inform you that you did not pass the Technical Assessment phase.",
@@ -356,6 +357,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({"error": "Assessment link is required"}, status=status.HTTP_400_BAD_REQUEST)
         application.assessment_link = assessment_link
         application.save()
+        send_assessment_email(application.user, application.job.company, assessment_link)
         return Response({"message": "Assessment link updated successfully"}, status=status.HTTP_200_OK)
     @action(detail=False, methods=['post'])
     def update_status_by_ats(self, request):

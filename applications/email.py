@@ -90,3 +90,16 @@ def send_contract(application):
         'termination': application.termination
     }
     _post_fire_and_forget(url, data)
+
+def send_assessment_email(user, company, link):
+    # url = os.getenv("MAIL_SERVICE") + "/send-assessment-email"
+    print("send_assessment_email", user, company, link)
+    url = 'send-assessment-email'
+    data = {
+        "user_email": user.email,
+        "user_name": user.name,
+        "company_name": company.name,
+        "company_email": company.email,
+        "link": link,
+    }
+    _post_fire_and_forget(url, data)
