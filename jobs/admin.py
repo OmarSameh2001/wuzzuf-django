@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from wuzzuf.queue import send_to_queue
 load_dotenv()
+from user.helpers import jobs_collection
 
 
 FASTAPI_URL = os.environ.get("FAST_API")
@@ -65,8 +66,7 @@ class JobAdmin(admin.ModelAdmin):
           
     def delete_model(self, request, obj):
         try:
-            response = requests.delete(f"{FASTAPI_URL}/{obj.id}")
-            response.raise_for_status()
+            jobs_collection.delete_one({"id": obj.id})
         except requests.exceptions.RequestException as e:
             self.message_user(request, f"Failed to delete from FastAPI: {e}", level='ERROR')
 
