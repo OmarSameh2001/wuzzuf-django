@@ -166,24 +166,26 @@ def get_recommendationsView(request, user_id):
                 cv = False
             else:
                 print("Generating new embedding (CV changed)")
-                # fastapi_url = f"{FASTAPI_URL}/user_embedding/?user_id={user_id}&cv_url={cv_url}"
-                if(tries == 0): 
-                    send_to_queue('user_queue', "get", f"user_embedding/?user_id={user_id}&cv_url={cv_url}", {'user_id': user_id, "cv_url": cv_url.url})
-                time.sleep(4)
+                fastapi_url = f"{FASTAPI_URL}/user_embedding/?user_id={user_id}&cv_url={cv_url}"
+                # if(tries == 0): 
+                #     send_to_queue('user_queue', "get", f"user_embedding/?user_id={user_id}&cv_url={cv_url}", {'user_id': user_id, "cv_url": cv_url.url})
+                # time.sleep(4)
 
                 # print (fastapi_url)
-                # try: send_to_queue("job_queue", fastapi_data, "put", f"jobs/{pk}")
-                #     response = requests.get(fastapi_url)
-                #     response.raise_for_status()
-                #     data = response.json()
+                try: 
+                    response = requests.get(fastapi_url)
+                    response.raise_for_status()
+                    data = response.json()
                     
-                #     embedding = data.get("embedding")
-                # except requests.exceptions.RequestException as e:
-                #     error_msg = f"FastAPI service error: {str(e)}"
-                #     if hasattr(e, 'response') and e.response is not None:
-                #         error_msg = f"FastAPI error: {e.response.json().get('detail', e.response.text)}"
-                #     return JsonResponse({"error": error_msg}, status=500)
-            tries += 1
+                    embedding = data.get("embedding")
+                    
+                    cv = False
+                except requests.exceptions.RequestException as e:
+                    error_msg = f"FastAPI service error: {str(e)}"
+                    if hasattr(e, 'response') and e.response is not None:
+                        error_msg = f"FastAPI error: {e.response.json().get('detail', e.response.text)}"
+                    return JsonResponse({"error": error_msg}, status=500)
+            # tries += 1
         
         recommendations = recommendation_vector_search(embedding, page, page_size, match_conditions)
         

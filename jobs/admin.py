@@ -51,12 +51,12 @@ class JobAdmin(admin.ModelAdmin):
         try:
             if change:
                 # If the job is being updated
-            #  response = requests.put(f"{FASTAPI_URL}/{obj.id}", json=fastapi_data)
-                send_to_queue("job_queue", "put", f"jobs/{obj.id}", fastapi_data)
+             response = requests.put(f"{FASTAPI_URL}/{obj.id}", json=fastapi_data)
+                # send_to_queue("job_queue", "put", f"jobs/{obj.id}", fastapi_data)
             else:
             # If the job is being created
-            #  response = requests.post(FASTAPI_URL + "/jobs", json=fastapi_data)
-                send_to_queue("job_queue", "post", f"jobs", fastapi_data)
+             response = requests.post(FASTAPI_URL + "/jobs", json=fastapi_data)
+                # send_to_queue("job_queue", "post", f"jobs", fastapi_data)
 
             # response.raise_for_status()
 

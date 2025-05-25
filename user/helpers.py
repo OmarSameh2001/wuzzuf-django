@@ -73,7 +73,11 @@ def send_rag(file, chunk_size=500, chunk_overlap=50):
             "chunk_overlap": chunk_overlap
         }
         print("data", data)
-        send_to_queue("job_queue", "post", "rag", data)
+        # send_to_queue("job_queue", "post", "rag", data)
+        requests.post(
+            f"{os.getenv('FASTAPI_URL')}/rag",
+            json=data
+        )
 
     except Exception as e:
         print(f"Failed to send rag : {e}")
